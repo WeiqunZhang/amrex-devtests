@@ -1,6 +1,7 @@
 #include "MyTest.H"
 
 #include <AMReX_MLABecLaplacian.H>
+#include <AMReX_MLALaplacian.H>
 #include <AMReX_MLPoisson.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFabUtil.H>
@@ -21,7 +22,7 @@ MyTest::solve ()
     } else if (prob_type == 2) {
         solveABecLaplacian();
     } else if (prob_type == 3) {
-//        solveABecLaplacianInhomNeumann();
+        solveALaplacian();
     } else {
         amrex::Abort("Unknown prob_type");
     }
@@ -100,6 +101,35 @@ MyTest::solveABecLaplacian ()
 void
 MyTest::solveALaplacian ()
 {
+    LPInfo lpinfo;
+    lpinfo.setMaxCoarseningLevel(max_coarsening_level).setHiddenDirection(hidden_direction);
+    MLALaplacian mlalaplacian({geom}, {grids}, {dmap}, lpinfo);
+
+    // This is a 3d problem with Dirichlet BC
+    mlalaplacian.setDomainBC({AMREX_D_DECL(LinOpBCType::Dirichlet,
+                                          LinOpBCType::Dirichlet,
+                                          LinOpBCType::Dirichlet)},
+                            {AMREX_D_DECL(LinOpBCType::Dirichlet,
+                                          LinOpBCType::Dirichlet,
+                                          LinOpBCType::Dirichlet)});
+
+    mlalaplacian.setLevelBC(0, &solution);
+
+    mlalaplacian.setScalars(ascalar, bscalar);
+
+    mlalaplacian.setACoeffs(0, acoef);
+
+    MLMG mlmg(mlalaplacian);
+    mlmg.setMaxIter(max_iter);
+    mlmg.setMaxFmgIter(max_fmg_iter);
+    mlmg.setVerbose(verbose);
+    mlmg.setBottomVerbose(bottom_verbose);
+
+    amrex::Print() << "xxxxx" << std::endl;
+
+    const Real tol_rel = 1.e-10;
+    const Real tol_abs = 0.0;
+    mlmg.solve({&solution}, {&rhs}, tol_rel, tol_abs);
 }
 
 void
@@ -149,12 +179,12 @@ MyTest::initData ()
 
     if (prob_type == 1) {
         initProbPoisson();
-    } else if (prob_type == 2) {
-        initProbABecLaplacian();
+//    } else if (prob_type == 2) {
+//        initProbABecLaplacian();
     } else if (prob_type == 3) {
         initProbALaplacian();
     } else {
-        amrex::Abort("Unknown prob_type "+std::to_string(prob_type));
+        amrex::Abort("Unsupported prob_type "+std::to_string(prob_type));
     }
 }
 
