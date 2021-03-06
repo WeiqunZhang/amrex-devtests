@@ -82,8 +82,17 @@ void actual_init_abeclap (int i, int j, int k,
             robin_a(i,j,k) = 1.0;
             robin_b(i,j,k) = 3.0;
         }
-        amrex::Real dphidn = -tpi * std::sin(tpi*x) * std::cos(tpi*y) * std::cos(tpi*z)
-                             - pi * std::sin(fpi*x) * std::cos(fpi*y) * std::cos(fpi*z);
+        amrex::Real dphidn;
+        if (robin_dir == 0) {
+            dphidn = -tpi * std::sin(tpi*x) * std::cos(tpi*y) * std::cos(tpi*z)
+                     - pi * std::sin(fpi*x) * std::cos(fpi*y) * std::cos(fpi*z);
+        } else if (robin_dir == 1) {
+            dphidn = -tpi * std::cos(tpi*x) * std::sin(tpi*y) * std::cos(tpi*z)
+                     - pi * std::cos(fpi*x) * std::sin(fpi*y) * std::cos(fpi*z);
+        } else {
+            dphidn = -tpi * std::cos(tpi*x) * std::cos(tpi*y) * std::sin(tpi*z)
+                     - pi * std::cos(fpi*x) * std::cos(fpi*y) * std::sin(fpi*z);
+        }
         if (robin_face == 0) dphidn *= -1.0;
         robin_f(i,j,k) = robin_a(i,j,k) * sol(i,j,k) + robin_b(i,j,k) * dphidn;
     }
