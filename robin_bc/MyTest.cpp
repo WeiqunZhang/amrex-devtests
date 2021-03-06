@@ -66,6 +66,8 @@ void
 MyTest::readParameters ()
 {
     ParmParse pp;
+    pp.query("robin_dir", robin_dir);
+    pp.query("robin_face", robin_face);
     pp.query("n_cell", n_cell);
     pp.query("max_grid_size", max_grid_size);
     pp.query("verbose", verbose);
