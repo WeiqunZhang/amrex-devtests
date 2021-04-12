@@ -2,7 +2,13 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_Print.H>
 #include <AMReX_Random.H>
+#include <AMReX_Reduce.H>
 #include <AMReX_Scan.H>
+
+#ifdef AMREX_USE_CUDA
+#include <thrust/scan.h>
+#endif
+
 #include <limits>
 #include <numeric>
 
@@ -21,29 +27,29 @@ int test_scan (unsigned int N, bool debug)
     {
         dp[i] = static_cast<T>((Random()-0.5)*100.);
     });
+    Gpu::synchronize();
 
-    Gpu::PinnedVector<T> hv(N);
-    Gpu::dtoh_memcpy_async(hv.data(), dv.data(), sizeof(T)*N);
-
-    Gpu::PinnedVector<T> hv_out(N);
-    Gpu::PinnedVector<T> dv_out_pinned(N);
+    Gpu::DeviceVector<T> bm(N);
+    T* dpbm = bm.data();
+    thrust::inclusive_scan(thrust::device, dv.begin(), dv.end(), bm.begin());
+    T bm_sum;
+    Gpu::dtoh_memcpy(&bm_sum, dpbm+N-1, sizeof(T));
+    Gpu::synchronize();
 
     { // inclusive scan
         bool ret_inc = true;
         T sum =  Scan::PrefixSum<T>(N, [=] AMREX_GPU_DEVICE (unsigned i) { return dp[i]; },
                                     [=] AMREX_GPU_DEVICE (unsigned i, T ps) { return dpo[i] = ps; },
                                     Scan::Type::inclusive);
-        Gpu::dtoh_memcpy_async(dv_out_pinned.data(), dv_out.data(), sizeof(T)*N);
-        Gpu::synchronize();
-        std::partial_sum(hv.begin(), hv.end(), hv_out.begin());
-        ret_inc = ret_inc && (sum == hv_out[N-1]);
+        ret_inc = ret_inc && (sum == bm_sum);
         if (debug && !ret_inc) {
             amrex::Print() << "    Inclusive sum failed with wrong total sum "
-                           << sum << ".  Should be " << hv_out[N-1] << std::endl;
+                           << sum << ".  Should be " << bm_sum << std::endl;
         }
-        for (unsigned i = 0; i < N; ++i) {
-            ret_inc = ret_inc && (dv_out_pinned[i] == hv_out[i]);
-        }
+        T error = Reduce::Sum<T>(N, [=] AMREX_GPU_DEVICE (unsigned i) -> T {
+                return amrex::Math::abs(dpo[i] - dpbm[i]);
+            });
+        ret_inc = ret_inc && (error == T{0});
         if (debug) {
             if (ret_inc) {
                 amrex::Print() << "    Inclusive sum passed" << std::endl;;
@@ -59,17 +65,18 @@ int test_scan (unsigned int N, bool debug)
         T sum =  Scan::PrefixSum<T>(N, [=] AMREX_GPU_DEVICE (unsigned i) { return dp[i]; },
                                     [=] AMREX_GPU_DEVICE (unsigned i, T ps) { return dpo[i] = ps; },
                                     Scan::Type::exclusive);
-        Gpu::dtoh_memcpy_async(dv_out_pinned.data(), dv_out.data(), sizeof(T)*N);
-        Gpu::synchronize();
-        ret_exc = ret_exc && (sum == hv_out[N-1]);
+        ret_exc = ret_exc && (sum == bm_sum);
         if (debug && !ret_exc) {
             amrex::Print() << "    Exclusive sum failed with wrong total sum "
-                           << sum << ".  Should be " << hv_out[N-1] << std::endl;
+                           << sum << ".  Should be " << bm_sum << std::endl;
         }
-        ret_exc = ret_exc && (dv_out_pinned[0] == T{0});
-        for (unsigned i = 0; i < N-1; ++i) {
-            ret_exc = ret_exc && (dv_out_pinned[i+1] == hv_out[i]);
-        }
+        T error = Reduce::Sum<T>(N, [=] AMREX_GPU_DEVICE (unsigned i) -> T {
+                if (i == 0) {
+                    return T{0};
+                } else {
+                    return amrex::Math::abs(dpo[i] - dpbm[i-1]);
+                }
+            });
         if (debug) {
             if (ret_exc) {
                 amrex::Print() << "    Exclusive sum passed" << std::endl;
