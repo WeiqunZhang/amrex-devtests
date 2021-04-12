@@ -77,6 +77,7 @@ int test_scan (unsigned int N, bool debug)
                     return amrex::Math::abs(dpo[i] - dpbm[i-1]);
                 }
             });
+        ret_exc = ret_exc && (error == T{0});
         if (debug) {
             if (ret_exc) {
                 amrex::Print() << "    Exclusive sum passed" << std::endl;
