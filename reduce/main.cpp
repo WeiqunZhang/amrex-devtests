@@ -3,13 +3,11 @@
 #include <AMReX_ParmParse.H>
 #include <AMReX_Random.H>
 
-#include <cub/cub.cuh>
-
 using namespace amrex;
 
 int main(int argc, char* argv[])
 {
-    amrex::Real t, tcub, tvec, t1d;
+    amrex::Real t, tvendor=0., tvec, t1d;
     amrex::Initialize(argc,argv);
     {
         BL_PROFILE("main()");
@@ -37,9 +35,11 @@ int main(int argc, char* argv[])
                 a(i,j,k) = amrex::Random(engine) + 0.5_rt;
             });
         }
+
         {
             BL_PROFILE("reduce-warmup");
-            mf.sum();
+            Real r = mf.sum();
+            amrex::Print() << "MultiFab::sum       = " << r << std::endl;
         }
         {
             BL_PROFILE("reduce-mf");
@@ -47,56 +47,73 @@ int main(int argc, char* argv[])
             mf.sum();
             t = amrex::second()-t0;
         }
+
         Real* p = mf[0].dataPtr();
         Real* hsum = (Real*)The_Pinned_Arena()->alloc(sizeof(Real));
         Real* dsum = (Real*)The_Arena()->alloc(sizeof(Real));
-        Long num_items = domain.numPts();
-        {
-            void     *d_temp_storage = NULL;
-            size_t   temp_storage_bytes = 0;
-            cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, dsum, num_items);
-            // Allocate temporary storage
-            d_temp_storage = (void*)The_Arena()->alloc(temp_storage_bytes);
-            // Run sum-reduction
-            cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, dsum, num_items);
-            Gpu::dtoh_memcpy(hsum,dsum, sizeof(Real));
-            Gpu::synchronize();
-        }
-        {
+        Long npts = domain.numPts();
+
+#if defined(AMREX_USE_CUB)
+        for (int i = 0; i < 2; ++i) {
             amrex::Real t0 = amrex::second();
-            void     *d_temp_storage = NULL;
+            void     *d_temp_storage = nullptr;
             size_t   temp_storage_bytes = 0;
-            cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, dsum, num_items);
+            cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, dsum, npts);
             // Allocate temporary storage
             d_temp_storage = (void*)The_Arena()->alloc(temp_storage_bytes);
             // Run sum-reduction
-            cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, dsum, num_items);
+            cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, dsum, npts);
             Gpu::dtoh_memcpy(hsum,dsum, sizeof(Real));
-            Gpu::synchronize();
-            tcub = amrex::second()-t0;
+            The_Arena()->free(d_temp_storage);
+            if (i == 0) {
+                amrex::Print() << "cub sum             = " << *hsum << std::endl;
+            } else {
+                tvendor = amrex::second()-t0;
+            }
         }
+#elif defined(AMREX_USE_HIP)
+        for (int i = 0; i < 2; ++i) {
+            amrex::Real t0 = amrex::second();
+            void * d_temp_storage = nullptr;
+            size_t temporary_storage_bytes = 0;
+            rocprim::reduce(d_temp_storage, temporary_storage_bytes,
+                            p, dsum, npts, rocprim::plus<Real>());
+            d_temp_storage = The_Arena()->alloc(temporary_storage_bytes);
+            rocprim::reduce(d_temp_storage, temporary_storage_bytes,
+                            p, dsum, npts, rocprim::plus<Real>());
+            Gpu::dtoh_memcpy(hsum, dsum, sizeof(Real));
+            The_Arena()->free(d_temp_storage);
+            if (i == 0) {
+                amrex::Print() << "hip sum             = " << *hsum << std::endl;
+            } else {
+                tvendor = amrex::second()-t0;
+            }
+        }
+#endif
 
         {
-            *hsum = Reduce::Sum(num_items, p);
+            *hsum = Reduce::Sum(npts, p);
+            amrex::Print() << "Reduce::Sum(ptr)    = " << *hsum << std::endl;
         }
         {
             amrex::Real t0 = amrex::second();
-            *hsum = Reduce::Sum(num_items, p);
+            *hsum = Reduce::Sum(npts, p);
             tvec = amrex::second()-t0;
         }
 
         {
-            *hsum = Reduce::Sum<Real>(num_items,
+            *hsum = Reduce::Sum<Real>(npts,
                                       [=] AMREX_GPU_DEVICE (int i) -> Real { return p[i]; } );
+            amrex::Print() << "Reduce::Sum(lambda) = " << *hsum << std::endl;
         }
         {
             amrex::Real t0 = amrex::second();
-            *hsum = Reduce::Sum<Real>(num_items,
+            *hsum = Reduce::Sum<Real>(npts,
                                       [=] AMREX_GPU_DEVICE (int i) -> Real { return p[i]; } );
             t1d = amrex::second()-t0;
         }
     }
     amrex::Finalize();
-    std::cout << "Kernel run time is " << std::scientific << t << " " << tcub
+    std::cout << "Kernel run time is " << std::scientific << t << " " << tvendor
               << " " << tvec << " " << t1d << ".\n";
 }
