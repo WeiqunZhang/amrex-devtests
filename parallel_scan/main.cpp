@@ -5,10 +5,6 @@
 #include <AMReX_Reduce.H>
 #include <AMReX_Scan.H>
 
-#ifdef AMREX_USE_CUDA
-#include <thrust/scan.h>
-#endif
-
 #include <limits>
 #include <numeric>
 
@@ -25,13 +21,13 @@ int test_scan (unsigned int N, bool debug)
     T* dpo = dv_out.data();
     ParallelForRNG(N, [=] AMREX_GPU_DEVICE (unsigned int i, RandomEngine const& engine)
     {
-        dp[i] = static_cast<T>((Random()-0.5)*100.);
+        dp[i] = static_cast<T>((Random(engine)-0.5)*100.);
     });
     Gpu::synchronize();
 
     Gpu::DeviceVector<T> bm(N);
     T* dpbm = bm.data();
-    thrust::inclusive_scan(thrust::device, dv.begin(), dv.end(), bm.begin());
+    Gpu::inclusive_scan(dv.begin(), dv.end(), bm.begin());
     T bm_sum;
     Gpu::dtoh_memcpy(&bm_sum, dpbm+N-1, sizeof(T));
     Gpu::synchronize();
