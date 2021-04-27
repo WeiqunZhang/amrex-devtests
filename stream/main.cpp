@@ -1,6 +1,8 @@
 #include <AMReX.H>
 #include <AMReX_Gpu.H>
+#include <AMReX_ParmParse.H>
 #include <AMReX_Print.H>
+#include <AMReX_Reduce.H>
 
 #include <limits>
 
@@ -74,9 +76,13 @@ int main (int argc, char* argv[])
     amrex::Initialize(argc,argv);
     amrex::SetVerbose(0);
     {
-        Gpu::DeviceVector<Real> av(STREAM_ARRAY_SIZE);
-        Gpu::DeviceVector<Real> bv(STREAM_ARRAY_SIZE);
-        Gpu::DeviceVector<Real> cv(STREAM_ARRAY_SIZE);
+        amrex::Long stream_array_size = 134217728;
+        ParmParse pp;
+        pp.query("stream_array_size", stream_array_size);
+
+        Gpu::DeviceVector<Real> av(stream_array_size);
+        Gpu::DeviceVector<Real> bv(stream_array_size);
+        Gpu::DeviceVector<Real> cv(stream_array_size);
         Real scalar = 3.0;
 
         stream_init(av,bv,cv);
@@ -129,18 +135,18 @@ int main (int argc, char* argv[])
         }
 
         double bytes[4] = {
-            2 * sizeof(Real) * STREAM_ARRAY_SIZE,
-            2 * sizeof(Real) * STREAM_ARRAY_SIZE,
-            3 * sizeof(Real) * STREAM_ARRAY_SIZE,
-            3 * sizeof(Real) * STREAM_ARRAY_SIZE
+            static_cast<double>(2 * sizeof(Real) * stream_array_size),
+            static_cast<double>(2 * sizeof(Real) * stream_array_size),
+            static_cast<double>(3 * sizeof(Real) * stream_array_size),
+            static_cast<double>(3 * sizeof(Real) * stream_array_size)
         };
 
         char label[4][12] = {"Copy:      ", "Scale:     ", "Add:       ", "Triad:     "};
 
         std::printf("Function    Best Rate MB/s  Avg time     Min time     Max time\n");
         for (int j = 0; j < 4; ++j) {
-            printf("%s%12.1f  %11.6f  %11.6f  %11.6f\n", label[j],
-                   1.0e-06 * bytes[j]/mintime[j], avgtime[j], mintime[j], maxtime[j]);
+            std::printf("%s%12.1f  %11.6f  %11.6f  %11.6f\n", label[j],
+                        1.0e-06 * bytes[j]/mintime[j], avgtime[j], mintime[j], maxtime[j]);
         }
     }
     amrex::Finalize();
