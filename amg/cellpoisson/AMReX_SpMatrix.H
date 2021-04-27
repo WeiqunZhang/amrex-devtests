@@ -1,9 +1,10 @@
 #ifndef AMREX_SP_MATRIX_H_
 #define AMREX_SP_MATRIX_H_
 
-#include <AMReX_REAL.H>
-#include <AMReX_INT.H>
+#include <AMReX_AlgPartition.H>
 #include <AMReX_BaseFab.H>
+#include <AMReX_INT.H>
+#include <AMReX_REAL.H>
 
 #include <memory>
 
@@ -25,18 +26,7 @@ public:
     void operator= (SpMatrix const&) = delete;
 
 private:
-    // distribution mapping?
-    // Let's assume that the global lo is always 0
-    //
-    // Do we allow empty on this process?
-    //
-    // Something equivalent to BoxArray and DistributionMapping?
-
-//    Long m_num_global_rows;
-
-//    Long m_row_begin;
-//    Long m_row_end;
-//    Real* m_data;
+    AlgPartition m_partition;
 };
 
 }

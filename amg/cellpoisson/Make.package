@@ -1,5 +1,5 @@
 CEXE_sources += main.cpp
 
-CEXE_headers += AMReX_AlgVector.H AMReX_SpMatrix.H
-CEXE_sources += AMReX_AlgVector.cpp AMReX_SpMatrix.cpp
+CEXE_headers += AMReX_AlgVector.H AMReX_SpMatrix.H AMReX_AlgPartition.H
+CEXE_sources += AMReX_AlgVector.cpp AMReX_SpMatrix.cpp AMReX_AlgPartition.cpp
 

@@ -8,6 +8,15 @@
 
 using namespace amrex;
 
+void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
+{
+    // Create AlgPartition
+
+    // Create AlgVectors for phi and rhs
+
+    // Create SpMatrix for stencil
+}
+
 void main_main ()
 {
     int n_cell = 64;
@@ -56,7 +65,7 @@ void main_main ()
     }
     phi.setVal(0.0);
 
-
+    solve(geom, phi, rhs);
 }
 
 int main (int argc, char* argv[])
