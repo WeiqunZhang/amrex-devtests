@@ -3,6 +3,7 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_Print.H>
 
+#include <AMReX_AlgRow.H>
 #include <AMReX_AlgVector.H>
 #include <AMReX_SpMatrix.H>
 
@@ -10,7 +11,10 @@ using namespace amrex;
 
 void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 {
-    // Create AlgPartition
+    // Create cell id and partition
+    AlgRow alg_row(rhs.boxArray(), rhs.DistributionMap(), geom, IntVect(1));
+    auto const& cell_id = alg_row.id();
+    auto const& partition = alg_row.partition();
 
     // Create AlgVectors for phi and rhs
 
