@@ -23,7 +23,9 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
     rhsvec.copyFrom(rhs);
 
     // Create SpMatrix for stencil
-
+    SpMatrix<Real> A(partition);
+    constexpr int stencil_size = 2*AMREX_SPACEDIM+1;
+    A.reserve(A.numLocalRows() * stencil_size);
 
     // ...
 
