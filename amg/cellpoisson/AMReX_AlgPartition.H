@@ -12,13 +12,24 @@ namespace amrex {
 class AlgPartition
 {
 public:
+    AlgPartition ();
+    AlgPartition (Vector<Long> const& rows);
+    AlgPartition (Vector<Long>&& rows);
+    ~AlgPartition ();
 
+    void define (Vector<Long> const& rows);
+    void define (Vector<Long>&& rows);
+
+    Long operator[] (int i) const { return m_ref->m_row[i]; }
     Long numRows () const { return m_ref->m_row.back(); }
 
 private:
     struct Ref
     {
         friend class AlgPartition;
+        Ref () = default;
+        Ref (Vector<Long> const& rows) : m_row(rows) {}
+        Ref (Vector<Long>&& rows) : m_row(std::move(rows)) {}
         Vector<Long> m_row; // size: nprocs + 1
     };
 
