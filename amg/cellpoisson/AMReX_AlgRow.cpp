@@ -39,8 +39,21 @@ void AlgRow::define (BoxArray const& ba, DistributionMapping const& dm,
     for (MFIter mfi(m_id); mfi.isValid(); ++mfi) {
         Box const& vbx = mfi.validbox();
         Box const& fbx = mfi.fabbox();
-        // parallel for to fill the data including ghost cells setting to lowest
+        auto const& idarr = m_id.array(mfi);
+        amrex::ParallelFor(fbx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            if (vbx.contains(i,j,k)) {
+                idarr(i,j,k) = vbx.index(IntVect{AMREX_D_DECL(i,j,k)}) + id_begin;
+            } else {
+                idarr(i,j,k) = -1;
+            }
+        });
         id_begin += vbx.numPts();
+    }
+
+    if (m_id.nGrowVect() != 0) {
+        m_id.FillBoundary(geom.periodicity());
     }
 }
 
