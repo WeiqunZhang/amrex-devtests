@@ -1,4 +1,4 @@
-#include <AMReX_AlgRow.H>
+#include <AMReX_RowIndex.H>
 #include <AMReX_LayoutData.H>
 #include <AMReX_Vector.H>
 #include <AMReX_ParallelContext.H>
@@ -8,17 +8,17 @@
 
 namespace amrex {
 
-AlgRow::AlgRow (BoxArray const& ba, DistributionMapping const& dm,
-                Geometry const& geom, IntVect const& nghost)
+RowIndex::RowIndex (BoxArray const& ba, DistributionMapping const& dm,
+                    Geometry const& geom, IntVect const& nghost)
 {
     define(ba, dm, geom, nghost);
 }
 
-AlgRow::~AlgRow ()
+RowIndex::~RowIndex ()
 {}
 
-void AlgRow::define (BoxArray const& ba, DistributionMapping const& dm,
-                     Geometry const& geom, IntVect const& nghost)
+void RowIndex::define (BoxArray const& ba, DistributionMapping const& dm,
+                       Geometry const& geom, IntVect const& nghost)
 {
     AMREX_ASSERT(ba.ixType().cellCentered());
     m_geom = geom;
@@ -58,13 +58,13 @@ void AlgRow::define (BoxArray const& ba, DistributionMapping const& dm,
 }
 
 const FabArray<BaseFab<Long> >&
-AlgRow::id () const
+RowIndex::id () const
 {
     return m_id;
 }
 
 const AlgPartition&
-AlgRow::partition () const
+RowIndex::partition () const
 {
     return m_partition;
 }

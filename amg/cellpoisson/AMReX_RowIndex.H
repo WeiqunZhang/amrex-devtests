@@ -1,5 +1,5 @@
-#ifndef AMREX_ALG_ROW_H_
-#define AMREX_ALG_ROW_H_
+#ifndef AMREX_ROW_INDEX_H_
+#define AMREX_ROW_INDEX_H_
 #include <AMReX_Config.H>
 
 #include <AMReX_AlgPartition.H>
@@ -10,12 +10,12 @@
 
 namespace amrex {
 
-class AlgRow
+class RowIndex
 {
 public:
-    AlgRow (BoxArray const& ba, DistributionMapping const& dm,
-            Geometry const& geom, IntVect const& nghost);
-    ~AlgRow ();
+    RowIndex (BoxArray const& ba, DistributionMapping const& dm,
+              Geometry const& geom, IntVect const& nghost);
+    ~RowIndex ();
 
     void define (BoxArray const& ba, DistributionMapping const& dm,
                  Geometry const& geom, IntVect const& nghost);
