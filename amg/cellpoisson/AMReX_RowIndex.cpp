@@ -22,7 +22,7 @@ void RowIndex::define (BoxArray const& ba, DistributionMapping const& dm,
 {
     AMREX_ASSERT(ba.ixType().cellCentered());
     m_geom = geom;
-    m_id.define(ba, dm, 1, nghost);
+    m_index.define(ba, dm, 1, nghost);
 
     Vector<Long> ncells_allprocs(ParallelDescriptor::NProcs(), 0);
     for (int k = 0, N = ba.size(); k < N; ++k) {
@@ -36,10 +36,10 @@ void RowIndex::define (BoxArray const& ba, DistributionMapping const& dm,
     m_partition.define(std::move(rows));
 
     Long id_begin = m_partition[ParallelDescriptor::MyProc()];
-    for (MFIter mfi(m_id); mfi.isValid(); ++mfi) {
+    for (MFIter mfi(m_index); mfi.isValid(); ++mfi) {
         Box const& vbx = mfi.validbox();
         Box const& fbx = mfi.fabbox();
-        auto const& idarr = m_id.array(mfi);
+        auto const& idarr = m_index.array(mfi);
         amrex::ParallelFor(fbx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k)
         {
@@ -52,15 +52,15 @@ void RowIndex::define (BoxArray const& ba, DistributionMapping const& dm,
         id_begin += vbx.numPts();
     }
 
-    if (m_id.nGrowVect() != 0) {
-        m_id.FillBoundary(geom.periodicity());
+    if (m_index.nGrowVect() != 0) {
+        m_index.FillBoundary(geom.periodicity());
     }
 }
 
 const FabArray<BaseFab<Long> >&
-RowIndex::id () const
+RowIndex::index () const
 {
-    return m_id;
+    return m_index;
 }
 
 const AlgPartition&

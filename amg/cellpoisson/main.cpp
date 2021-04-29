@@ -3,8 +3,8 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_Print.H>
 
-#include <AMReX_RowIndex.H>
 #include <AMReX_AlgVector.H>
+#include <AMReX_RowIndex.H>
 #include <AMReX_SpMatrix.H>
 
 using namespace amrex;
@@ -13,12 +13,22 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 {
     // Create cell id and partition
     RowIndex rowidx(rhs.boxArray(), rhs.DistributionMap(), geom, IntVect(1));
-    auto const& cell_id = rowidx.id();
+    auto const& cell_id = rowidx.index();
     auto const& partition = rowidx.partition();
 
     // Create AlgVectors for phi and rhs
+    AlgVector<Real> phivec(partition);
+    AlgVector<Real> rhsvec(partition);
+    phivec.copyFrom(phi);
+    rhsvec.copyFrom(rhs);
 
     // Create SpMatrix for stencil
+
+
+    // ...
+
+    // Copy data back
+    phivec.copyTo(phi);
 }
 
 void main_main ()

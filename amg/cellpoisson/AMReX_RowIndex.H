@@ -20,12 +20,12 @@ public:
     void define (BoxArray const& ba, DistributionMapping const& dm,
                  Geometry const& geom, IntVect const& nghost);
 
-    const FabArray<BaseFab<Long> >& id () const;
+    const FabArray<BaseFab<Long> >& index () const;
     const AlgPartition& partition () const;
 
 private:
     Geometry m_geom;
-    FabArray<BaseFab<Long> > m_id;
+    FabArray<BaseFab<Long> > m_index;
     AlgPartition m_partition;
 };
 
