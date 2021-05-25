@@ -43,7 +43,6 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
 
     auto p = mf[0].dataPtr();
     auto hsum = (value_type*)The_Pinned_Arena()->alloc(sizeof(value_type));
-    auto dsum = (value_type*)The_Arena()->alloc(sizeof(value_type));
     Long npts = domain.numPts();
 
 #if defined(AMREX_USE_CUB)
@@ -51,12 +50,12 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
         double t0 = amrex::second();
         void     *d_temp_storage = nullptr;
         size_t   temp_storage_bytes = 0;
-        cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, dsum, npts);
+        cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, hsum, npts);
         // Allocate temporary storage
         d_temp_storage = (void*)The_Arena()->alloc(temp_storage_bytes);
         // Run sum-reduction
-        cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, dsum, npts);
-        Gpu::dtoh_memcpy(hsum,dsum, sizeof(value_type));
+        cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, hsum, npts);
+        Gpu::synchronize();
         The_Arena()->free(d_temp_storage);
         if (i == 0) {
             amrex::Print() << "    cub sum             = " << *hsum << std::endl;
@@ -70,11 +69,11 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
         void * d_temp_storage = nullptr;
         size_t temporary_storage_bytes = 0;
         rocprim::reduce(d_temp_storage, temporary_storage_bytes,
-                        p, dsum, npts, rocprim::plus<value_type>());
+                        p, hsum, npts, rocprim::plus<value_type>());
         d_temp_storage = The_Arena()->alloc(temporary_storage_bytes);
         rocprim::reduce(d_temp_storage, temporary_storage_bytes,
-                        p, dsum, npts, rocprim::plus<value_type>());
-        Gpu::dtoh_memcpy(hsum, dsum, sizeof(value_type));
+                        p, hsum, npts, rocprim::plus<value_type>());
+        Gpu::synchronize();
         The_Arena()->free(d_temp_storage);
         if (i == 0) {
             amrex::Print() << "    hip sum             = " << *hsum << std::endl;
