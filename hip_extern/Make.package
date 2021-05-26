@@ -1,0 +1,2 @@
+CEXE_sources += main.cpp init.cpp work.cpp
+CEXE_headers += par.H par_def.H init.H work.H
