@@ -25,6 +25,11 @@ void test_setval (MultiFab& mf)
         t_new = t2-t1;
     }
 
+    if (mf.min(0) != 1.0 || mf.max(0) != 1.0) {
+        amrex::Print() << "ERROR!!! setVal failed "
+                       << mf.min(0) << ", " << mf.max(0) << std::endl;
+    }
+
     amrex::Print() << "    Kernel run time is " << std::scientific << t_orig
                    << " " << t_new << ".\n";
 }
@@ -37,23 +42,35 @@ int main(int argc, char* argv[])
 
         int ncell = 256;
         int max_grid_size;
+        std::vector<int> box_sizes;
+        std::vector<int> nboxes;
         {
             ParmParse pp;
             pp.query("ncell", ncell);
             max_grid_size = ncell;
-            pp.query("max_grid_size", max_grid_size);
+            pp.queryarr("box_sizes", box_sizes);
+            nboxes.resize(box_sizes.size(),1);
+            pp.queryarr("nboxes", nboxes);
         }
 
         Box domain(IntVect(0),IntVect(ncell-1));
-        BoxArray ba(domain);
-        ba.maxSize(max_grid_size);
+        BoxArray ba;
+        if (box_sizes.empty()) {
+            ba = BoxArray(domain);
+            ba.maxSize(max_grid_size);
+        } else {
+            BoxList bl;
+            for (int i = 0; i < box_sizes.size(); ++i) {
+                for (int j = 0; j < nboxes[i]; ++j) {
+                    bl.push_back(Box(IntVect(0), IntVect(box_sizes[i]-1)));
+                }
+            }
+            ba = BoxArray(std::move(bl));
+        }
         DistributionMapping dm{ba};
         MultiFab mf(ba, dm, 1, 0);
 
         test_setval(mf);
-        if (mf.min(0) != 1.0 || mf.max(0) != 1.0) {
-            amrex::Print() << "ERROR!!! setVal failed" << std::endl;
-        }
     }
     amrex::Finalize();
 }
