@@ -48,6 +48,7 @@ int main(int argc, char* argv[])
             ParmParse pp;
             pp.query("ncell", ncell);
             max_grid_size = ncell;
+            pp.query("max_grid_size", max_grid_size);
             pp.queryarr("box_sizes", box_sizes);
             nboxes.resize(box_sizes.size(),1);
             pp.queryarr("nboxes", nboxes);
