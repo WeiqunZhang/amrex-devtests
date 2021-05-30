@@ -13,8 +13,8 @@ void test_setval (MultiFab& mf)
         double t1 = amrex::second();
         {
             auto ma = mf.arrays();
-            amrex::ParallelFor(mf,
-                               [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k)
+            amrex::experimental::ParallelFor(mf,
+            [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k)
             {
                 ma[box_no](i,j,k) = 1.0;
             });
