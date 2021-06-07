@@ -22,7 +22,7 @@ MyTest::initializeEB ()
     if (geom_type == "rotated_box")
     {
         EB2::BoxIF box({AMREX_D_DECL(0.25,0.25,0.25)},
-                       {AMREX_D_DECL(0.75,0.75,0.75)}, true);
+                       {AMREX_D_DECL(0.75,0.75,0.75)}, false);
         auto gshop = EB2::makeShop(EB2::translate(
                                        EB2::rotate(
                                            EB2::translate(box, {AMREX_D_DECL(-0.5,-0.5,-0.5)}),
@@ -32,7 +32,7 @@ MyTest::initializeEB ()
     }
     else if (geom_type == "flower")
     {
-        FlowerIF flower(0.3, 0.15, 6, {AMREX_D_DECL(0.5,0.5,0.5)}, true);
+        FlowerIF flower(0.3, 0.15, 6, {AMREX_D_DECL(0.5,0.5,0.5)}, false);
 #if (AMREX_SPACEDIM == 2)
         auto gshop = EB2::makeShop(flower);
 #else

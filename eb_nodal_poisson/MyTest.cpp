@@ -1,6 +1,6 @@
 #include "MyTest.H"
 
-#include <AMReX_MLEBNodeTensorLaplacian.H>
+#include <AMReX_MLEBNodeFDLaplacian.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFabUtil.H>
 #include <AMReX_EBMultiFabUtil.H>
@@ -68,13 +68,13 @@ MyTest::solve ()
         {
             BL_PROFILE_REGION("LEVEL-SOLVE-lev"+std::to_string(ilev)+"-pass"+std::to_string(ipass));
 
-            MLEBNodeTensorLaplacian mleb({geom[ilev]}, {grids[ilev]}, {dmap[ilev]}, info,
-                                         {factory[ilev].get()});
+            MLEBNodeFDLaplacian mleb({geom[ilev]}, {grids[ilev]}, {dmap[ilev]}, info,
+                                     {factory[ilev].get()});
 
             mleb.setDomainBC(mlmg_lobc, mlmg_hibc);
             phi[ilev].setVal(phi_domain);
 
-            mleb.setBeta({AMREX_D_DECL(0.6, 0.5, 0.2)});
+            mleb.setSigma({AMREX_D_DECL(1.0, 1.0, 1.0)});
             mleb.setEBDirichlet(phi_eb);
 
             MLMG mlmg(mleb);
