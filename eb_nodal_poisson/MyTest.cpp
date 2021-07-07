@@ -76,6 +76,7 @@ MyTest::solve ()
 
             mleb.setSigma({AMREX_D_DECL(1.0, 1.0, 1.0)});
             mleb.setEBDirichlet(phi_eb);
+//            mleb.setEBDirichlet([=] AMREX_GPU_HOST_DEVICE (Real x, Real y, Real z) -> Real { return phi_eb; });
 
             MLMG mlmg(mleb);
             mlmg.setMaxIter(max_iter);
@@ -206,6 +207,6 @@ MyTest::initData ()
         rhs[ilev].define(nba, dmap[ilev], 1, 0, MFInfo(), *factory[ilev]);
 
         phi[ilev].setVal(0.0);
-        rhs[ilev].setVal(0.0);
+        rhs[ilev].setVal(1.0);
     }
 }

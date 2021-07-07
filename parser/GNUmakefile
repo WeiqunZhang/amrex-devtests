@@ -18,6 +18,8 @@ TINY_PROFILE = FALSE
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
+DEFINES += -DAMREX_DEBUG_PARSER
+
 include ./Make.package
 include $(AMREX_HOME)/Src/Base/Make.package
 
