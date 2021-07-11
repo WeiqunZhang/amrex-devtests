@@ -62,8 +62,9 @@ int main (int argc, char* argv[])
     {
 //        Parser parser("a=3; a+4");
 //        Parser parser("a=3; b=7; c=a+b; a+b+c");
-//        Parser parser("a=x+3; b = x+y; b+a");
-        Parser parser("max(0.1-abs(x+0.5), 0.1-abs(x-0.5))");
+        Parser parser("a=x+3; b = x+y; b+a");
+//        Parser parser("max(0.1-abs(x+0.5), 0.1-abs(x-0.5))");
+//        Parser parser; //("");
         parser.registerVariables({"x","y"});
 
         parser.print();
@@ -75,7 +76,15 @@ int main (int argc, char* argv[])
             amrex::Print() << "Symbol: " << s << "\n";
         }
 
-        amrex::Print() << "f() = " << exe({5,7}) << std::endl;
+        amrex::Print() << "f() = " << exe({5. ,7. }) << ", sizeof = " << sizeof(exe({5. ,7. })) << std::endl;
+        amrex::Print() << "f() = " << exe({5.f,7. }) << ", sizeof = " << sizeof(exe({5.f,7. })) << std::endl;
+        amrex::Print() << "f() = " << exe({5. ,7.f}) << ", sizeof = " << sizeof(exe({5. ,7.f})) << std::endl;
+        amrex::Print() << "f() = " << exe({5.f,7.f}) << ", sizeof = " << sizeof(exe({5.f,7.f})) << std::endl;
+
+        amrex::Print() << "f() = " << exe(5. ,7. ) << ", sizeof = " << sizeof(exe(5. ,7. )) << std::endl;
+        amrex::Print() << "f() = " << exe(5.f,7. ) << ", sizeof = " << sizeof(exe(5.f,7. )) << std::endl;
+        amrex::Print() << "f() = " << exe(5. ,7.f) << ", sizeof = " << sizeof(exe(5. ,7.f)) << std::endl;
+        amrex::Print() << "f() = " << exe(5.f,7.f) << ", sizeof = " << sizeof(exe(5.f,7.f)) << std::endl;
 
 #if 0
         test3("a*sin(pi*x) + b*cos(2*pi*y+pi*z)",
