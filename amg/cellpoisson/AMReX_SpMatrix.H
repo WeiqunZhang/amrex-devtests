@@ -39,7 +39,7 @@ public:
 private:
     AlgPartition m_partition;
     Long m_row_begin, m_row_end;
-    CSR m_data;
+    CSR m_data; // We might need two CSRs, one for local data, the other for remote data
 };
 
 template <typename T, template<typename> typename Allocator>
