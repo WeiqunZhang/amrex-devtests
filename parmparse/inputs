@@ -1,0 +1,22 @@
+stay = 0
+
+amrex.foo = 0
+amrex.foo = 1
+
+stay = 1
+
+amrex.bar = 128 128
+amrex.bar = 256 256
+
+stay = 2
+
+amrex.foobar = 3.5
+
+stop_time = 0.3
+stay = 3
+stop_time = 0.5
+
+nsteps = 45
+
+stay = 4
+
