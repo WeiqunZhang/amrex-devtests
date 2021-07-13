@@ -1,5 +1,5 @@
 
-AMReX has a workaround for an DPC++ issue in AMReX's reduction functions at
+AMReX has a workaround for a DPC++ issue in AMReX's reduction functions at
 `amrex/Src/Base/AMReX_Reduce.H`.  We use a two passes algorithm.  The second
 pass is done in `ReduceOps::value()` starting at around line 514.  We have
 to do the second pass twice in order to get correct results consistently.
