@@ -7,9 +7,10 @@
 // User Inputs
 struct Inputs
 {
-  int ncomp;
-  int ngrow;
-  amrex::Real radius;
+  int use_new_fillpatch = 1;
+  int ncomp = 10;
+  int ngrow = 2;
+  amrex::Real radius = 0.25;
 };
 
 // Level Data - Data on all boxes at a single level

@@ -40,6 +40,9 @@ void AmrCoreDerived :: ReadInputs()
     pp.query("ncomp", m_inputs.ncomp);
     pp.query("ngrow", m_inputs.ngrow);
   }
+
+  amrex::ParmParse pp;
+  pp.query("use_new_fillpatch", m_inputs.use_new_fillpatch);
 }
 
 // Make a new level from scratch using provided BoxArray and DistributionMapping.
@@ -142,8 +145,13 @@ void AmrCoreDerived :: FillPatchLevel (int lev, amrex::MultiFab& mf, amrex::Mult
     fmf.push_back(&mf);
     ftime.push_back(0.0);
 
-    amrex::Interpolater* mapper = &amrex::cell_cons_interp;
-    //amrex::Interpolater* mapper = &amrex::pc_interp;
+    amrex::InterpBase* mapper;
+    if (m_inputs.use_new_fillpatch) {
+        mapper = &amrex::mf_cell_cons_interp;
+    } else {
+        mapper = &amrex::cell_cons_interp;
+    }
+    //amrex::InterpBase* mapper = &amrex::pc_interp;
 
     if(amrex::Gpu::inLaunchRegion())
     {
@@ -184,8 +192,11 @@ void AmrCoreDerived :: FillPatch()
 {
   const int icomp = 0;
 
-  for(int lev = 0; lev <= finest_level; ++lev)
-    FillPatchLevel(lev, m_levdata[lev].gpu_mfabs, m_levdata[lev-1].gpu_mfabs, icomp, m_levdata[lev].gpu_mfabs.nComp() );
+  for(int lev = 0; lev <= finest_level; ++lev) {
+      int clev = (lev == 0) ? 0 : lev-1;
+      FillPatchLevel(lev, m_levdata[lev].gpu_mfabs, m_levdata[clev].gpu_mfabs,
+                     icomp, m_levdata[lev].gpu_mfabs.nComp() );
+  }
 
 }
 

@@ -1,3 +1,5 @@
+use_new_fillpatch = 1
+
 # MEMORY
 amrex.the_arena_is_managed        = 0
 amrex.the_managed_arena_init_size = 0
