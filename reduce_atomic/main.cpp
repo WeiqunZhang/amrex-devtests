@@ -28,9 +28,6 @@ void test_reduce_sum (Gpu::DeviceVector<float> const& dv)
         [=] AMREX_GPU_DEVICE (int i, Gpu::Handler const& h) noexcept
         {
             Gpu::deviceReduceSum(sp, dp[i], h);
-//            if (threadIdx.x == 0) {
-//                AMREX_DEVICE_PRINTF("xxxxx *hp = %f, *dp = %f\n", *hp, dp[i]);
-//            }
         });
         Gpu::copy(Gpu::deviceToHost, dsum.begin(), dsum.end(), hsum.begin());
         Gpu::synchronize();
