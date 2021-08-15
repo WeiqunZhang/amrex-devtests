@@ -1,15 +1,15 @@
 #include <AMReX.H>
-#include <AMReX_MultiFab.H>
+#include <AMReX_MultiFabUtil.H>
 #include <AMReX_ParmParse.H>
 
 using namespace amrex;
 
-void test (MultiFab& mf1, MultiFab& mf2, MultiFab& mf3)
+void test (MultiFab const& mfnd, MultiFab& mfcc)
 {
     double t = 0.;
     for (int itest = 0; itest < 2; ++itest) {
         double t0 = amrex::second();
-        MultiFab::Copy(mf1, mf2, 0, 0, 1, 0);
+        average_node_to_cellcenter(mfcc, 0, mfnd, 0, mfnd.nComp());
         double t1 = amrex::second();
         t = t1-t0;
     }
@@ -51,14 +51,12 @@ int main(int argc, char* argv[])
             ba = BoxArray(std::move(bl));
         }
         DistributionMapping dm{ba};
-        MultiFab mf1(ba, dm, 1, 0);
-        MultiFab mf2(ba, dm, 1, 0);
-        MultiFab mf3(ba, dm, 1, 0);
-        mf1.setVal(1.);
-        mf2.setVal(2.);
-        mf3.setVal(3.);
+        MultiFab mfnd(amrex::convert(ba,IntVect(1)), dm, 3, 0);
+        MultiFab mfcc(ba, dm, 3, 0);
+        mfnd.setVal(1.);
+        mfcc.setVal(2.);
 
-        test(mf1, mf2, mf3);
+        test(mfnd, mfcc);
     }
     amrex::Finalize();
 }
