@@ -86,16 +86,24 @@ double test3 (MultiFab& mf)
     return amrex::second()-t;
 }
 
+double test4 (MultiFab& mf)
+{
+    double t = amrex::second();
+    mf.setBndry(3.0);
+    return amrex::second()-t;
+}
+
 void test (MultiFab & mf)
 {
-    double t1, t2, t3;
+    double t1, t2, t3, t4;
     for (int itest = 0; itest < 2; ++itest) {
         t1 = test1(mf);
         t2 = test2(mf);
         t3 = test3(mf);
+        t4 = test4(mf);
     }
     amrex::Print() << "   Run times are " << std::scientific
-                   << t1 << " " << t2 << " " << t3 << "\n";
+                   << t1 << " " << t2 << " " << t3 << " " << t4 << "\n";
 }
 
 int main(int argc, char* argv[])
