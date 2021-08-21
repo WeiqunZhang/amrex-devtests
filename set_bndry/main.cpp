@@ -53,31 +53,32 @@ double test3 (MultiFab& mf)
     const IntVect& nghost = mf.nGrowVect();
     const int ncomp = mf.nComp();
 
-    Vector<Array4BoxTag<Real> > tags;
+    using Tag = Array4BoxTag<Real>;
+    Vector<Tag> tags;
     for (MFIter mfi(mf); mfi.isValid(); ++mfi) {
         Box const& vbx = mfi.validbox();
         auto const& a = mf.array(mfi);
 
         Box b = amrex::adjCellLo(vbx, 2, nghost[2]);
         b.grow(IntVect(nghost[0],nghost[1],0));
-        tags.emplace_back(Array4BoxTag<Real>{a, b});
+        tags.emplace_back(Tag{a, b});
         b.shift(2, vbx.length(2)+nghost[2]);
-        tags.emplace_back(Array4BoxTag<Real>{a, b});
+        tags.emplace_back(Tag{a, b});
 
         b = amrex::adjCellLo(vbx, 1, nghost[1]);
         b.grow(IntVect(nghost[0],0,0));
-        tags.emplace_back(Array4BoxTag<Real>{a, b});
+        tags.emplace_back(Tag{a, b});
         b.shift(1, vbx.length(1)+nghost[1]);
-        tags.emplace_back(Array4BoxTag<Real>{a, b});
+        tags.emplace_back(Tag{a, b});
 
         b = amrex::adjCellLo(vbx, 0, nghost[0]);
-        tags.emplace_back(Array4BoxTag<Real>{a, b});
+        tags.emplace_back(Tag{a, b});
         b.shift(0, vbx.length(0)+nghost[0]);
-        tags.emplace_back(Array4BoxTag<Real>{a, b});
+        tags.emplace_back(Tag{a, b});
     }
 
     ParallelFor(tags, ncomp,
-    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n, Array4BoxTag<Real> const& tag) noexcept
+    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n, Tag const& tag) noexcept
     {
         tag.dfab(i,j,k,n) = 3.;
     });
