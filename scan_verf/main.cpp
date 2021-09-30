@@ -115,6 +115,7 @@ int main (int argc, char* argv[])
         double max_run_seconds, report_int_seconds;
         unsigned int single_test_size = 0;
         bool debug = false;
+        bool test_long = true;
         {
             ParmParse pp;
 
@@ -137,6 +138,7 @@ int main (int argc, char* argv[])
             if (tmp > 0) { single_test_size = tmp; }
 
             pp.query("debug", debug);
+            pp.query("test_long", test_long);
         }
         double t_begin = amrex::second();
         double t_end = t_begin + max_run_seconds;
@@ -152,7 +154,11 @@ int main (int argc, char* argv[])
             }
             ++ntot;
             npass_int += test_scan<int>(N, debug);
-            npass_long += test_scan<Long>(N, debug);
+            if (test_long) {
+                npass_long += test_scan<Long>(N, debug);
+            } else {
+                ++npass_long;
+            }
             if (amrex::second() > t_report) {
                 t_report += report_int_seconds;
                 amrex::Print() << "After running " << ntot << " tests in "
