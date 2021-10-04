@@ -25,12 +25,31 @@ int test_scan (unsigned int N, bool debug)
     });
     Gpu::synchronize();
 
+    if (debug) {
+        amrex::Print() << "    Finished init" << std::endl;
+    }
+
     Gpu::DeviceVector<T> bm(N);
     T* dpbm = bm.data();
+#if defined(AMREX_USE_DPCPP) && !defined(AMREX_USE_ONEDPL)
+    Gpu::PinnedVector<T> hbm(N);
+    Gpu::dtoh_memcpy(hbm.data(), dp, sizeof(T)*N);
+    Gpu::synchronize();
+    std::inclusive_scan(hbm.begin(), hbm.end(), hbm.begin(), std::plus<T>());
+    T bm_sum = hbm.back();
+    Gpu::htod_memcpy(bm.data(), hbm.data(), sizeof(T)*N);
+    Gpu::synchronize();
+#else
     Gpu::inclusive_scan(dv.begin(), dv.end(), bm.begin());
     T bm_sum;
     Gpu::dtoh_memcpy(&bm_sum, dpbm+N-1, sizeof(T));
     Gpu::synchronize();
+#endif
+
+    if (debug) {
+        amrex::Print() << "    Finished Gpu::inclusive_scan for "
+                       << (sizeof(T) == 8 ? "long" : "int") << std::endl;
+    }
 
     { // inclusive scan
         bool ret_inc = true;
@@ -96,6 +115,7 @@ int main (int argc, char* argv[])
         double max_run_seconds, report_int_seconds;
         unsigned int single_test_size = 0;
         bool debug = false;
+        bool test_long = true;
         {
             ParmParse pp;
 
@@ -118,6 +138,7 @@ int main (int argc, char* argv[])
             if (tmp > 0) { single_test_size = tmp; }
 
             pp.query("debug", debug);
+            pp.query("test_long", test_long);
         }
         double t_begin = amrex::second();
         double t_end = t_begin + max_run_seconds;
@@ -133,7 +154,11 @@ int main (int argc, char* argv[])
             }
             ++ntot;
             npass_int += test_scan<int>(N, debug);
-            npass_long += test_scan<Long>(N, debug);
+            if (test_long) {
+                npass_long += test_scan<Long>(N, debug);
+            } else {
+                ++npass_long;
+            }
             if (amrex::second() > t_report) {
                 t_report += report_int_seconds;
                 amrex::Print() << "After running " << ntot << " tests in "
