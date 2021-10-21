@@ -19,7 +19,7 @@ MyTest::initializeEB ()
     std::string geom_type;
     pp.get("geom_type", geom_type);
 
-    int additional_levels = 0;
+    int additional_levels = 20;
 
     if (geom_type == "rotated_box")
     {
