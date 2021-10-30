@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
         }
 
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-            VisMF::Write(cmf[idim], "a-cmf-"+std::to_string(idim));
+            VisMF::Write(cmf[idim], "cmf-"+std::to_string(idim));
             VisMF::Write(fmf[idim], "a-fmf-"+std::to_string(idim));
         }
 
@@ -136,7 +136,6 @@ int main(int argc, char* argv[])
         ifr.interp(amrex::GetArrOfPtrs(fmf), amrex::GetArrOfConstPtrs(cmf), 0, 1);        
 
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-            VisMF::Write(cmf[idim], "b-cmf-"+std::to_string(idim));
             VisMF::Write(fmf[idim], "b-fmf-"+std::to_string(idim));
         }
     }
