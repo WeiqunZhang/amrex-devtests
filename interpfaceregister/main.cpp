@@ -108,7 +108,8 @@ int main(int argc, char* argv[])
 
         InterpFaceRegister ifr(fba, fdm, fgeom, ref_ratio);
 
-        // Set coarse/fine boundary faces to zero
+#if 0
+        // Set coarse/fine boundary faces to an incorrect value
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
             auto const& mlo_mf = ifr.mask(Orientation(idim,Orientation::low));
             auto const& mhi_mf = ifr.mask(Orientation(idim,Orientation::high));
@@ -131,6 +132,7 @@ int main(int argc, char* argv[])
                 });
             }
         }
+#endif
 
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
             VisMF::Write(cmf[idim], "cmf-"+std::to_string(idim));
