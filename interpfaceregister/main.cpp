@@ -1,6 +1,7 @@
 #include <AMReX.H>
 #include <AMReX_InterpFaceRegister.H>
 #include <AMReX_VisMF.H>
+#include <AMReX_ParmParse.H>
 
 using namespace amrex;
 
@@ -8,7 +9,11 @@ int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
     {
-        const int n_cell = 128;
+        int n_cell = 128;
+        {
+            ParmParse pp;
+            pp.query("n_cell", n_cell);
+        }
         IntVect ref_ratio(2);
 
         Geometry cgeom, fgeom;
@@ -57,7 +62,7 @@ int main(int argc, char* argv[])
         Array<MultiFab,AMREX_SPACEDIM> cmf;
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
             cmf[idim].define(amrex::convert(cba, IntVect::TheDimensionVector(idim)),
-                             cdm, 2, 0);
+                             cdm, 1, 0);
             for (MFIter mfi(cmf[idim]); mfi.isValid(); ++mfi) {
                 auto const& fab = cmf[idim].array(mfi);
                 Box const& box = mfi.validbox();
@@ -81,7 +86,7 @@ int main(int argc, char* argv[])
         Array<MultiFab,AMREX_SPACEDIM> fmf;
         for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
             fmf[idim].define(amrex::convert(fba, IntVect::TheDimensionVector(idim)),
-                             fdm, 2, 0);
+                             fdm, 1, 0);
             for (MFIter mfi(fmf[idim]); mfi.isValid(); ++mfi) {
                 auto const& fab = fmf[idim].array(mfi);
                 Box const& box = mfi.validbox();
