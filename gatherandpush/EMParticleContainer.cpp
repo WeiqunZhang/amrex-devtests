@@ -20,7 +20,6 @@ GatherAndPush(const MultiFab& Ex, const MultiFab& Ey, const MultiFab& Ez,
 
     const int lev = 0;
     const auto dx = Geom(lev).CellSizeArray();
-    const auto plo = Geom(lev).ProbLoArray();
     for (EMParIter pti(*this, lev); pti.isValid(); ++pti)
     {
         const int np  = pti.numParticles();
@@ -31,7 +30,6 @@ GatherAndPush(const MultiFab& Ex, const MultiFab& Ey, const MultiFab& Ez,
         ParticleType * pstruct = &(pti.GetArrayOfStructs()[0]);
 
         auto& attribs = pti.GetAttribs();
-        Real *  wp  = attribs[PIdx::w].data();
         Real * uxp  = attribs[PIdx::ux].data();
         Real * uyp  = attribs[PIdx::uy].data();
         Real * uzp  = attribs[PIdx::uz].data();

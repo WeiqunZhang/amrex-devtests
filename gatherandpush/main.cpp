@@ -15,7 +15,7 @@ namespace YeeGrid {
     static constexpr IntVect Ex_nodal_flag(0,1,1);
     static constexpr IntVect Ey_nodal_flag(1,0,1);
     static constexpr IntVect Ez_nodal_flag(1,1,0);
-};
+}
 
 Real compute_dt (const Geometry& geom)
 {

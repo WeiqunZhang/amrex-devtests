@@ -10,17 +10,23 @@ COMP    = gcc
 TINY_PROFILE  = TRUE
 USE_PARTICLES = TRUE
 
+BL_NO_FORT = TRUE
+
 PRECISION     = DOUBLE
 
-USE_MPI       = TRUE
+USE_MPI       = FALSE
 USE_OMP       = FALSE
-USE_CUDA      = TRUE
+USE_CUDA      = FALSE
 USE_HIP       = FALSE
-USE_DPCPP     = FALSE
+USE_DPCPP     = TRUE
 
 #CXXSTD = c++17
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
+
+ifeq ($(USE_DPCPP),TRUE)
+  CXXFLAGS += -fsycl-targets=spir64_gen-unknown-unknown-sycldevice -Xsycl-target-backend '-device xehp'
+endif
 
 include ./Make.package
 include $(AMREX_HOME)/Src/Base/Make.package
