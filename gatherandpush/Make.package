@@ -1,0 +1,2 @@
+CEXE_sources += main.cpp EMParticleContainerInit.cpp EMParticleContainer.cpp
+CEXE_headers += Constants.H EMParticleContainer.H em_pic_K.H
