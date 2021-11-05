@@ -29,9 +29,9 @@ Real compute_dt (const Geometry& geom)
 
 struct TestParams
 {
-    IntVect ncell;
-    IntVect nppc;
-    int max_grid_size;
+    IntVect ncell = IntVect(128);
+    IntVect nppc = IntVect(2);
+    int max_grid_size=128;
 };
 
 void test_em_pic (const TestParams& parms)
@@ -75,7 +75,11 @@ void test_em_pic (const TestParams& parms)
     particles.InitParticles(parms.nppc, 0.01, 10.0, 1e25, real_box);
 
     const Real dt = compute_dt(geom);
+    particles.GatherAndPush(Ex, Ey, Ez, Bx, By, Bz, 0.0);
+    auto t0 = amrex::second();
     particles.GatherAndPush(Ex, Ey, Ez, Bx, By, Bz, dt);
+    amrex::Print() << "\n    GatherAndPush kernlel time is " << amrex::second()-t0
+                   << "\n" << std::endl;
 }
 
 int main(int argc, char* argv[])
@@ -85,9 +89,9 @@ int main(int argc, char* argv[])
         ParmParse pp;
         TestParams parms;
 
-        pp.get("ncell", parms.ncell);
-        pp.get("nppc",  parms.nppc);
-        pp.get("max_grid_size", parms.max_grid_size);
+        pp.query("ncell", parms.ncell);
+        pp.query("nppc",  parms.nppc);
+        pp.query("max_grid_size", parms.max_grid_size);
 
         test_em_pic(parms);
     }
