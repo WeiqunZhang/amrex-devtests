@@ -47,7 +47,7 @@ int test_scan (unsigned int N, bool debug)
 #endif
 
     if (debug) {
-        amrex::Print() << "    Finished Gpu::inclusive_scan for "
+        amrex::Print() << "    Finished inclusive_scan for "
                        << (sizeof(T) == 8 ? "long" : "int") << std::endl;
     }
 
@@ -112,6 +112,7 @@ int main (int argc, char* argv[])
     {
         Long ntests = std::numeric_limits<Long>::max();
         unsigned int max_size = 200'000'000u;
+        unsigned int min_size = 1u;
         double max_run_seconds, report_int_seconds;
         unsigned int single_test_size = 0;
         bool debug = false;
@@ -134,12 +135,18 @@ int main (int argc, char* argv[])
             if (tmp > 0) { max_size = tmp; }
 
             tmp = -1;
+            pp.query("min_size", tmp);
+            if (tmp > 0) { min_size = tmp; }
+
+            tmp = -1;
             pp.query("single_test_size", tmp);
             if (tmp > 0) { single_test_size = tmp; }
 
             pp.query("debug", debug);
             pp.query("test_long", test_long);
         }
+        AMREX_ALWAYS_ASSERT_WITH_MESSAGE(single_test_size > 0 || max_size >= min_size,
+                                         "min_size must be <= max_size");
         double t_begin = amrex::second();
         double t_end = t_begin + max_run_seconds;
         double t_report = t_begin + report_int_seconds;
@@ -147,8 +154,12 @@ int main (int argc, char* argv[])
         if (single_test_size > 0) { ntests = 1; }
         for (Long k = 0; k < ntests; ++k) {
             if (amrex::second() > t_end) { break; }
-            unsigned int N = (single_test_size > 0)
-                ? single_test_size : amrex::Random_int(max_size-1) + 1;
+            unsigned int N;
+            if (single_test_size > 0) {
+                N = single_test_size;
+            } else {
+                N = amrex::Random_int(max_size-min_size+1) + min_size;
+            }
             if (debug) {
                 amrex::Print() << "# " << k << ": N = " << N << std::endl;
             }
@@ -162,7 +173,7 @@ int main (int argc, char* argv[])
             if (amrex::second() > t_report) {
                 t_report += report_int_seconds;
                 amrex::Print() << "After running " << ntot << " tests in "
-                               << static_cast<int>((amrex::second()-t_begin)/60.)
+                               << static_cast<int>((amrex::second()-t_begin)/6.)*0.1
                                << " minutes, ";
                 Long nfail_int = ntot - npass_int;
                 Long nfail_long = ntot - npass_long;
