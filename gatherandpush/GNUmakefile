@@ -7,7 +7,7 @@ DIM	= 3
 
 COMP    = gcc
 
-TINY_PROFILE  = TRUE
+TINY_PROFILE  = FALSE
 USE_PARTICLES = TRUE
 
 BL_NO_FORT = TRUE
@@ -25,7 +25,7 @@ USE_DPCPP     = TRUE
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
 ifeq ($(USE_DPCPP),TRUE)
-  CXXFLAGS += -fsycl-targets=spir64_gen-unknown-unknown-sycldevice -Xsycl-target-backend '-device xehp'
+# CXXFLAGS += -fsycl-targets=spir64_gen-unknown-unknown-sycldevice -Xsycl-target-backend '-device xehp'
 endif
 
 include ./Make.package
