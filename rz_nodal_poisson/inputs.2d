@@ -1,0 +1,10 @@
+amrex.fpe_trap_invalid = 1
+
+composite_solve = 0
+
+#max_coarsening_level = 0
+reltol = 1.e-11
+
+max_level = 0
+n_cell = 128
+max_grid_size = 64
