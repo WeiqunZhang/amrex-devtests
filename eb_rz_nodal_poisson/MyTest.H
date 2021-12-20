@@ -30,7 +30,6 @@ private:
     int n_cell = 128;
     int max_grid_size = 64;
 
-    amrex::Real phi_domain = 0.0;
     amrex::Real phi_eb = 1.0;
 
     std::string plot_file_name{"plot"};
@@ -56,6 +55,7 @@ private:
     amrex::Vector<amrex::DistributionMapping> dmap;
     amrex::Vector<std::unique_ptr<amrex::EBFArrayBoxFactory> > factory;
 
+    amrex::Vector<amrex::MultiFab> exact;
     amrex::Vector<amrex::MultiFab> phi;
     amrex::Vector<amrex::MultiFab> rhs;
 };

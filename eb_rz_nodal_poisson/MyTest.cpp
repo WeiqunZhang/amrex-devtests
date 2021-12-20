@@ -67,7 +67,6 @@ MyTest::solve ()
                                      {factory[ilev].get()});
 
             mleb.setDomainBC(mlmg_lobc, mlmg_hibc);
-            phi[ilev].setVal(phi_domain);
 
 //            mleb.setSigma({AMREX_D_DECL(1.0, 1.0, 1.0)});
             mleb.setEBDirichlet(phi_eb);
@@ -91,6 +90,13 @@ MyTest::solve ()
             const Real tol_rel = reltol;
             const Real tol_abs = 0.0;
             mlmg.solve({&phi[ilev]}, {&rhs[ilev]}, tol_rel, tol_abs);
+
+            MultiFab diff(phi[ilev].boxArray(), phi[ilev].DistributionMap(), 1, 0);
+            MultiFab::Copy(diff, phi[ilev], 0, 0, 1, 0);
+            MultiFab::Subtract(diff, exact[ilev], 0, 0, 1, 0);
+            const auto dx = geom[ilev].CellSizeArray();
+            amrex::Print() << "0-norm: " << diff.norminf()
+                           << " 1-norm: " << diff.norm1() * dx[0]*dx[1] << std::endl;;
         }
     }
 }
@@ -102,6 +108,7 @@ MyTest::writePlotfile ()
     for (int ilev = 0; ilev <= max_level; ++ilev) {
         const MultiFab& vfrc = factory[ilev]->getVolFrac();
         amrex::VisMF::Write(vfrc, "vfrc-"+std::to_string(ilev));
+        amrex::VisMF::Write(exact[ilev], "exact-"+std::to_string(ilev));
         amrex::VisMF::Write(phi[ilev], "phi-"+std::to_string(ilev));
         amrex::VisMF::Write(rhs[ilev], "rhs-"+std::to_string(ilev));
     }
@@ -117,7 +124,6 @@ MyTest::readParameters ()
 
     AMREX_ALWAYS_ASSERT_WITH_MESSAGE(max_level == 0, "max_level must be either 0");
 
-    pp.query("phi_domain", phi_domain);
     pp.query("phi_eb", phi_eb);
 
     pp.query("plot_file", plot_file_name);
@@ -187,8 +193,13 @@ MyTest::initData ()
     int nlevels = max_level + 1;
     dmap.resize(nlevels);
     factory.resize(nlevels);
+    exact.resize(nlevels);
     phi.resize(nlevels);
     rhs.resize(nlevels);
+
+    Real sphere_radius;
+    ParmParse pp("eb2");
+    pp.get("sphere_radius", sphere_radius);
 
     for (int ilev = 0; ilev < nlevels; ++ilev)
     {
@@ -200,10 +211,43 @@ MyTest::initData ()
 
         BoxArray const& nba = amrex::convert(grids[ilev], IntVect(1));
 
+        exact[ilev].define(nba, dmap[ilev], 1, 0, MFInfo(), *factory[ilev]);
         phi[ilev].define(nba, dmap[ilev], 1, 0, MFInfo(), *factory[ilev]);
         rhs[ilev].define(nba, dmap[ilev], 1, 0, MFInfo(), *factory[ilev]);
 
-        phi[ilev].setVal(0.0);
-        rhs[ilev].setVal(1.0);
+        const auto problo = geom[ilev].ProbLoArray();
+        const auto dx = geom[ilev].CellSizeArray();
+        Box domain = geom[ilev].Domain();
+        domain.growHi(0,-1); // shrink at Dirichlet boundaries
+        domain.grow(1,-1);
+
+        const MultiFab& levset = factory[ilev]->getLevelSet();
+
+        for (MFIter mfi(exact[ilev]); mfi.isValid(); ++mfi) {
+            auto const& exact_arr = exact[ilev].array(mfi);
+            auto const& phi_arr = phi[ilev].array(mfi);
+            auto const& rhs_arr = rhs[ilev].array(mfi);
+            auto const& ls_arr = levset.const_array(mfi);
+            amrex::ParallelFor(mfi.validbox(), [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                if (ls_arr(i,j,k) > 0.) {
+                    exact_arr(i,j,k) = 0.0;
+                    phi_arr(i,j,k) = 0.0;
+                    rhs_arr(i,j,k) = 0.0;
+                } else {
+                    Real r = problo[0] + i*dx[0];
+                    Real z = problo[1] + j*dx[1];
+                    Real r3d = std::sqrt(r*r+z*z);
+                    Real C = 3.1415926535897932 / (2.*sphere_radius);
+                    exact_arr(i,j,k) = std::sin(r3d * C);
+                    if (domain.contains(i,j,k)) {
+                        phi_arr(i,j,k) = 0.;
+                    } else {
+                        phi_arr(i,j,k) = exact_arr(i,j,k);
+                    }
+                    rhs_arr(i,j,k) = 2.*C/r3d * std::cos(r3d*C) - C*C*std::sin(r3d*C);
+                }
+            });
+        }
     }
 }
