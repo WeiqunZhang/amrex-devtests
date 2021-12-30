@@ -1,0 +1,32 @@
+use_new_fillpatch = 1
+
+# MEMORY
+amrex.the_arena_is_managed        = 0
+amrex.the_managed_arena_init_size = 0
+
+# PROBLEM SIZE & GEOMETRY
+geometry.is_periodic =  0  0  0
+geometry.coord_sys   =  0       # 0 --> cart
+geometry.prob_lo     =  -1.0  -1.0  -1.0
+geometry.prob_hi     =  1.0  1.0  1.0
+amr.n_cell           =  64   64   64
+
+# VERBOSITY
+amr.v               = 0       # verbosity in Amr
+
+# REFINEMENT
+amr.max_level       = 3      # maximum level number allowed
+amr.ref_ratio       = 2      # refinement ratio
+amr.blocking_factor = 8      # block factor in grid generation
+amr.max_grid_size   = 32
+
+# TAGGING
+amr.grid_eff        = 0.7     # grid efficiency
+amr.n_error_buf     = 3       # padding around tagged cells
+
+# MULTIFAB
+mfab.ncomp          =  10
+mfab.ngrow          =  2
+
+# SPHERE
+sphere.radius       =  0.25
