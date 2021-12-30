@@ -26,7 +26,7 @@ public:
     void operator= (SpMatrix &&) = delete;
 
     Long numLocalRows () const { return m_row_end - m_row_begin; }
-    Long numGlobalRows () const { return m_partition.numRows(); }
+    Long numGlobalRows () const { return m_partition.numGlobalRows(); }
 
     void reserve (Long ndata);
 
@@ -45,8 +45,8 @@ private:
 template <typename T, template<typename> typename Allocator>
 SpMatrix<T,Allocator>::SpMatrix (AlgPartition const& partition)
     : m_partition(partition),
-      m_row_begin(ParallelDescriptor::MyProc()),
-      m_row_end(ParallelDescriptor::MyProc()+1)
+      m_row_begin(partition[ParallelDescriptor::MyProc()]),
+      m_row_end(partition[ParallelDescriptor::MyProc()+1])
 {}
 
 template <typename T, template<typename> typename Allocator>
@@ -57,7 +57,9 @@ template <typename T, template<typename> typename Allocator>
 void
 SpMatrix<T,Allocator>::reserve (Long ndata)
 {
-//xxxxx
+    m_data.v.reserve(ndata);
+    m_data.col_index.reserve(ndata);
+    m_data.row_index.reserve(ndata);
 }
 
 }

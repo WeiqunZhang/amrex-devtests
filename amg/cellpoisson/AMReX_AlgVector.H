@@ -28,7 +28,7 @@ public:
     void operator= (AlgVector &&) = delete;
 
     Long numLocalRows () const { return m_end - m_begin; }
-    Long numGlobalRows () const { return m_partition.numRows(); }
+    Long numGlobalRows () const { return m_partition.numGlobalRows(); }
 
     template <typename FAB,
               std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
@@ -50,8 +50,8 @@ private:
 template <typename T, template<typename> typename Allocator>
 AlgVector<T,Allocator>::AlgVector (AlgPartition const& partition)
     : m_partition(partition),
-      m_begin(ParallelDescriptor::MyProc()),
-      m_end(ParallelDescriptor::MyProc()+1),
+      m_begin(partition[ParallelDescriptor::MyProc()]),
+      m_end(partition[ParallelDescriptor::MyProc()+1]),
       m_data(m_end-m_begin)
 {}
 

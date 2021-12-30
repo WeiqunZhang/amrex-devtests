@@ -21,7 +21,7 @@ public:
     void define (Vector<Long>&& rows);
 
     Long operator[] (int i) const { return m_ref->m_row[i]; }
-    Long numRows () const { return m_ref->m_row.back(); }
+    Long numGlobalRows () const { return m_ref->m_row.back(); }
 
 private:
     struct Ref

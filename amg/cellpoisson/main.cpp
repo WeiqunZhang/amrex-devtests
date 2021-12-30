@@ -13,8 +13,8 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 {
     // Create cell id and partition
     RowIndex rowidx(rhs.boxArray(), rhs.DistributionMap(), geom, IntVect(1));
-    auto const& cell_id = rowidx.index();
-    auto const& partition = rowidx.partition();
+    FabArray<BaseFab<Long> > const& cell_id = rowidx.index();
+    AlgPartition const& partition = rowidx.partition();
 
     // Create AlgVectors for phi and rhs
     AlgVector<Real> phivec(partition);
