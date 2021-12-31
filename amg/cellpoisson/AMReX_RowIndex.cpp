@@ -23,6 +23,7 @@ void RowIndex::define (BoxArray const& ba, DistributionMapping const& dm,
     AMREX_ASSERT(ba.ixType().cellCentered());
     m_geom = geom;
     m_index.define(ba, dm, 1, nghost);
+    m_range.define(ba, dm);
 
     Vector<Long> ncells_allprocs(ParallelDescriptor::NProcs(), 0);
     for (int k = 0, N = ba.size(); k < N; ++k) {
@@ -49,7 +50,9 @@ void RowIndex::define (BoxArray const& ba, DistributionMapping const& dm,
                 idarr(i,j,k) = -1;
             }
         });
+        m_range[mfi].first = id_begin;
         id_begin += vbx.numPts();
+        m_range[mfi].second = id_begin;
     }
 
     if (m_index.nGrowVect() != 0) {
@@ -67,6 +70,12 @@ const AlgPartition&
 RowIndex::partition () const
 {
     return m_partition;
+}
+
+std::pair<Long,Long>
+RowIndex::range (MFIter const& mfi) const
+{
+    return m_range[mfi];
 }
 
 }

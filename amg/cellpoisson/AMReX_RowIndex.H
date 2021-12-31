@@ -7,6 +7,9 @@
 #include <AMReX_FabArray.H>
 #include <AMReX_Geometry.H>
 #include <AMReX_INT.H>
+#include <AMReX_LayoutData.H>
+
+#include <utility>
 
 namespace amrex {
 
@@ -23,9 +26,12 @@ public:
     const FabArray<BaseFab<Long> >& index () const;
     const AlgPartition& partition () const;
 
+    std::pair<Long,Long> range (MFIter const& mfi) const;
+
 private:
     Geometry m_geom;
     FabArray<BaseFab<Long> > m_index;
+    LayoutData<std::pair<Long,Long> > m_range;
     AlgPartition m_partition;
 };
 

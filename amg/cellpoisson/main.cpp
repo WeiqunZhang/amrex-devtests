@@ -25,7 +25,78 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
     // Create SpMatrix for stencil
     SpMatrix<Real> A(partition);
     constexpr int stencil_size = 2*AMREX_SPACEDIM+1;
-    A.reserve(A.numLocalRows() * stencil_size);
+    A.resize(A.numLocalRows() * stencil_size);
+
+    const auto dxinv = geom.InvCellSizeArray();
+    const GpuArray<Real,AMREX_SPACEDIM> fac{AMREX_D_DECL(dxinv[0]*dxinv[0],
+                                                         dxinv[1]*dxinv[1],
+                                                         dxinv[2]*dxinv[2])};
+
+    // Set up matrix
+    for (MFIter mfi(phi); mfi.isValid(); ++mfi) {
+        Box const& vbx = mfi.validbox();
+        auto const& cid = cell_id.const_array(mfi);
+
+        Long row_begin = rowidx.range(mfi).first;
+
+        Real* mat = A.data() + row_begin*stencil_size;
+        Long* col = A.columnIndex() + row_begin*stencil_size;
+
+        BaseFab<GpuArray<Real,stencil_size> > tmpmatfab
+            (vbx, 1, (GpuArray<Real,stencil_size>*)mat);
+        amrex::fill(tmpmatfab,
+        [=] AMREX_GPU_HOST_DEVICE (GpuArray<Real,stencil_size>& sten, int i, int j, int k)
+        {
+#if (AMREX_SPACEDIM == 2)
+            sten[0] = Real(-2.) * (fac[0] + fac[1]);
+            if (cid(i-1,j,k) >= 0) {
+                sten[1] = fac[0];
+            } else { // Homogeneous Dirichlet boundary
+                sten[1] = Real(0.);
+            }
+            if (cid(i+1,j,k) >= 0) {
+                sten[2] = fac[0];
+            } else { // Homogeneous Dirichlet boundary
+                sten[2] = Real(0.);
+            }
+            if (cid(i,j-1,k) >= 0) {
+                sten[3] = fac[0];
+            } else { // Homogeneous Dirichlet boundary
+                sten[3] = Real(0.);
+            }
+            if (cid(i,j+1,k) >= 0) {
+                sten[4] = fac[0];
+            } else { // Homogeneous Dirichlet boundary
+                sten[4] = Real(0.);
+            }
+#else
+            static_assert(false, "3d todo");
+#endif
+        });
+
+        BaseFab<GpuArray<Real,stencil_size> > tmpcolfab
+            (vbx, 1, (GpuArray<Real,stencil_size>*)col);
+        amrex::fill(tmpcolfab,
+        [=] AMREX_GPU_HOST_DEVICE (GpuArray<Real,stencil_size>& sten, int i, int j, int k)
+        {
+#if (AMREX_SPACEDIM == 2)
+            sten[0] = cid(i,j,k);
+            sten[1] = cid(i-1,j,k);
+            sten[2] = cid(i+1,j,k);
+            sten[3] = cid(i,j-1,k);
+            sten[4] = cid(i,j+1,k);
+#else
+            static_assert(false, "3d todo");
+#endif
+        });
+    }
+
+    phivec.printToFile("phivec");
+    rhsvec.printToFile("rhsvec");
+
+    // A.assemble(stencil_size);
+
+    // A.print();
 
     // ...
 
@@ -35,7 +106,7 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 
 void main_main ()
 {
-    int n_cell = 64;
+    int n_cell = 4;
     int max_grid_size = 16;
 
     Geometry geom;

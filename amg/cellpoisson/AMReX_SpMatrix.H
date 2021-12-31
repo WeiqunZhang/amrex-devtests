@@ -29,6 +29,14 @@ public:
     Long numGlobalRows () const { return m_partition.numGlobalRows(); }
 
     void reserve (Long ndata);
+    void resize (Long ndata);
+
+    T const* data () const { return m_data.v.data(); }
+    T      * data ()       { return m_data.v.data(); }
+    Long const* columnIndex () const { return m_data.col_index.data(); }
+    Long      * columnIndex ()       { return m_data.col_index.data(); }
+    Long const* rowIndex () const { return m_data.row_index.data(); }
+    Long      * rowIndex ()       { return m_data.row_index.data(); }
 
     struct CSR {
         Vec<T> v;
@@ -59,7 +67,16 @@ SpMatrix<T,Allocator>::reserve (Long ndata)
 {
     m_data.v.reserve(ndata);
     m_data.col_index.reserve(ndata);
-    m_data.row_index.reserve(ndata);
+//    m_data.row_index.reserve(ndata);
+}
+
+template <typename T, template<typename> typename Allocator>
+void
+SpMatrix<T,Allocator>::resize (Long ndata)
+{
+    m_data.v.resize(ndata);
+    m_data.col_index.resize(ndata);
+//    m_data.row_index.resize(ndata);
 }
 
 }

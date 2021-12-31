@@ -1,0 +1,6 @@
+* We should have something to remove zero elements or cid<0
+
+* AlgVector: setVal
+
+* AlgVector & Matrix: print
+

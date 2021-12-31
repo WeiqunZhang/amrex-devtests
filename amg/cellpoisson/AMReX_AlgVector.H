@@ -7,6 +7,9 @@
 #include <AMReX_INT.H>
 #include <AMReX_LayoutData.H>
 
+#include <fstream>
+#include <string>
+
 namespace amrex {
 
 template <typename T, template<typename> typename Allocator = DefaultAllocator>
@@ -39,6 +42,8 @@ public:
               std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
                                std::is_same<T,typename FAB::value_type>::value,int> = 0>
     void copyTo (FabArray<FAB> & fa) const;
+
+    void printToFile (std::string const& file) const;
 
 private:
     AlgPartition m_partition;
@@ -102,6 +107,17 @@ AlgVector<T,Allocator>::copyTo (FabArray<FAB> & fa) const
 #endif
     for (MFIter mfi(fa); mfi.isValid(); ++mfi) {
         fa[mfi].template copyFromMem<RunOn::Device>(mfi.validbox(), 0, 1, dptrs[mfi]);
+    }
+}
+
+template <typename T, template<typename> typename Allocator>
+void AlgVector<T,Allocator>::printToFile (std::string const& file) const
+{
+    std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));
+    AllPrintToFile os(file);
+    ofs << m_begin << " " << m_end << "\n";
+    for (Long i = 0; i < m_data.size(); ++i) {
+        ofs << i+m_begin << " " << m_data[i] << "\n";
     }
 }
 
