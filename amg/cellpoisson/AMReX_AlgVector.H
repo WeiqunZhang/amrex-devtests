@@ -12,7 +12,7 @@
 
 namespace amrex {
 
-template <typename T, template<typename> typename Allocator = DefaultAllocator>
+template <typename T, template<typename> class Allocator = DefaultAllocator>
 class AlgVector
 {
 public:
@@ -52,7 +52,7 @@ private:
     Vec<T> m_data;
 };
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 AlgVector<T,Allocator>::AlgVector (AlgPartition const& partition)
     : m_partition(partition),
       m_begin(partition[ParallelDescriptor::MyProc()]),
@@ -60,11 +60,11 @@ AlgVector<T,Allocator>::AlgVector (AlgPartition const& partition)
       m_data(m_end-m_begin)
 {}
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 AlgVector<T,Allocator>::~AlgVector()
 {}
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 template <typename FAB, std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
                                          std::is_same<T,typename FAB::value_type>::value, int> >
 void
@@ -87,7 +87,7 @@ AlgVector<T,Allocator>::copyFrom (FabArray<FAB> const& fa)
     }
 }
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 template <typename FAB, std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
                                          std::is_same<T,typename FAB::value_type>::value, int> >
 void
@@ -110,7 +110,7 @@ AlgVector<T,Allocator>::copyTo (FabArray<FAB> & fa) const
     }
 }
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 void AlgVector<T,Allocator>::printToFile (std::string const& file) const
 {
     std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));

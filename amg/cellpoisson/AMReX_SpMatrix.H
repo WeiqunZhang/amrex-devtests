@@ -12,7 +12,7 @@
 
 namespace amrex {
 
-template <typename T, template<typename> typename Allocator = DefaultAllocator>
+template <typename T, template<typename> class Allocator = DefaultAllocator>
 class SpMatrix
 {
 public:
@@ -36,6 +36,7 @@ public:
 
     Long numLocalRows () const { return m_row_end - m_row_begin; }
     Long numGlobalRows () const { return m_partition.numGlobalRows(); }
+    Long numNonZero () const { return m_nnz; }
 
     T const* data () const { return m_data.mat.data(); }
     T      * data ()       { return m_data.mat.data(); }
@@ -44,7 +45,7 @@ public:
     Long const* rowIndex () const { return m_data.row_index.data(); }
     Long      * rowIndex ()       { return m_data.row_index.data(); }
 
-    void printToFile (std::string const& file);
+    void printToFile (std::string const& file) const;
 
 public: // for cuda
 
@@ -62,9 +63,10 @@ private:
     AlgPartition m_partition;
     Long m_row_begin, m_row_end;
     CSR m_data; // We might need two CSRs, one for local data, the other for remote data
+    Long m_nnz = -1;
 };
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 SpMatrix<T,Allocator>::SpMatrix (AlgPartition const& partition, int stencil_size)
     : m_partition(partition),
       m_row_begin(partition[ParallelDescriptor::MyProc()]),
@@ -73,11 +75,11 @@ SpMatrix<T,Allocator>::SpMatrix (AlgPartition const& partition, int stencil_size
     resize(stencil_size);
 }
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 SpMatrix<T,Allocator>::~SpMatrix ()
 {}
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 void
 SpMatrix<T,Allocator>::resize (int stencil_size)
 {
@@ -86,18 +88,19 @@ SpMatrix<T,Allocator>::resize (int stencil_size)
     m_data.row_index.resize(numLocalRows() + 1);
 }
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 void
 SpMatrix<T,Allocator>::assemble ()
 {
-    if (m_data.mat.size() <= static_cast<Long>(std::numeric_limits<int>::max())) {
+    if (static_cast<Long>(m_data.mat.size()) <=
+        static_cast<Long>(std::numeric_limits<int>::max())) {
         assemble_doit<int>();
     } else {
         assemble_doit<Long>();
     }
 }
 
-template <typename T, template<typename> typename Allocator>
+template <typename T, template<typename> class Allocator>
 template <typename N>
 void
 SpMatrix<T,Allocator>::assemble_doit ()
@@ -105,9 +108,9 @@ SpMatrix<T,Allocator>::assemble_doit ()
     const Long old_size = m_data.mat.size();
     const Long nrows = numLocalRows();
     const int stencil_size = old_size / nrows;
-    AMREX_ASSERT(nrows*stencil_size == m_data.mat.size());
+    AMREX_ASSERT(nrows*stencil_size == static_cast<Long>(m_data.mat.size()));
     AMREX_ASSERT(m_data.mat.size() == m_data.col_index.size());
-    AMREX_ASSERT(m_data.row_index.size() == nrows + 1);
+    AMREX_ASSERT(static_cast<Long>(m_data.row_index.size()) == nrows + 1);
 
     T* mat = m_data.mat.data();
     Long* col = m_data.col_index.data();
@@ -120,7 +123,7 @@ SpMatrix<T,Allocator>::assemble_doit ()
 
     Vec<N> psv(old_size);
     N* ps = psv.data();
-    N nnz = Scan::PrefixSum<N>(static_cast<N>(old_size), is_valid,
+    m_nnz = Scan::PrefixSum<N>(static_cast<N>(old_size), is_valid,
                                [=] AMREX_GPU_DEVICE (N i, N const& s)
                                {
                                    ps[i] = s;
@@ -132,8 +135,8 @@ SpMatrix<T,Allocator>::assemble_doit ()
                                },
                                Scan::Type::exclusive, Scan::retSum);
 
-    Vec<T> mattmpv(nnz);
-    Vec<Long> coltmpv(nnz);
+    Vec<T> mattmpv(m_nnz);
+    Vec<Long> coltmpv(m_nnz);
     T* mattmp = mattmpv.data();
     Long* coltmp = coltmpv.data();
     amrex::ParallelFor(old_size, [=] AMREX_GPU_DEVICE (Long i) noexcept
@@ -146,6 +149,23 @@ SpMatrix<T,Allocator>::assemble_doit ()
     Gpu::streamSynchronize();
     m_data.mat.swap(mattmpv);
     m_data.col_index.swap(coltmpv);
+}
+
+template <typename T, template<typename> class Allocator>
+void
+SpMatrix<T,Allocator>::printToFile (std::string const& file) const
+{
+    std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));
+    AllPrintToFile os(file);
+    ofs << m_row_begin << " " << m_row_end << " " << m_nnz << "\n";
+    for (Long i = 0, nrows = numLocalRows(); i < nrows; ++i) {
+        Long nnz_row = m_data.row_index[i+1] - m_data.row_index[i];
+        T    const* mat = m_data.mat.data()       + m_data.row_index[i];
+        Long const* col = m_data.col_index.data() + m_data.row_index[i];
+        for (Long j = 0; j < nnz_row; ++j) {
+            ofs << i << " " << col[j] << " " << mat[j] << "\n";
+        }
+    }
 }
 
 }

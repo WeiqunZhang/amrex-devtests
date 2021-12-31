@@ -95,7 +95,7 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 
     A.assemble();
 
-    // A.print();
+    A.printToFile("A");
 
     // ...
 
