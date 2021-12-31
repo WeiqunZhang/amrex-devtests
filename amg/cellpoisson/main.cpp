@@ -23,9 +23,8 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
     rhsvec.copyFrom(rhs);
 
     // Create SpMatrix for stencil
-    SpMatrix<Real> A(partition);
     constexpr int stencil_size = 2*AMREX_SPACEDIM+1;
-    A.resize(A.numLocalRows() * stencil_size);
+    SpMatrix<Real> A(partition, stencil_size);
 
     const auto dxinv = geom.InvCellSizeArray();
     const GpuArray<Real,AMREX_SPACEDIM> fac{AMREX_D_DECL(dxinv[0]*dxinv[0],
@@ -94,7 +93,7 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
     phivec.printToFile("phivec");
     rhsvec.printToFile("rhsvec");
 
-    // A.assemble(stencil_size);
+    A.assemble();
 
     // A.print();
 

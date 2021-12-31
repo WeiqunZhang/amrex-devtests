@@ -4,3 +4,6 @@
 
 * AlgVector & Matrix: print
 
+* Launch region, allocation is not device accessible
+
+* What if an entire row is zero?
