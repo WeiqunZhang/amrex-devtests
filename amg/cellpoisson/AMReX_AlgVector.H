@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <string>
+#include <type_traits>
 
 namespace amrex {
 
@@ -29,6 +30,8 @@ public:
     AlgVector (AlgVector &&) = delete;
     void operator= (AlgVector const&) = delete;
     void operator= (AlgVector &&) = delete;
+
+    AlgPartition const& partition () const { return m_partition; }
 
     Long numLocalRows () const { return m_end - m_begin; }
     Long numGlobalRows () const { return m_partition.numGlobalRows(); }
@@ -62,7 +65,9 @@ AlgVector<T,Allocator>::AlgVector (AlgPartition const& partition)
 
 template <typename T, template<typename> class Allocator>
 AlgVector<T,Allocator>::~AlgVector()
-{}
+{
+    static_assert(std::is_floating_point<T>::value, "AlgVector is for floating point type only");
+}
 
 template <typename T, template<typename> class Allocator>
 template <typename FAB, std::enable_if_t<amrex::IsBaseFab<FAB>::value &&

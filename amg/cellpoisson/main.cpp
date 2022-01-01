@@ -6,6 +6,7 @@
 #include <AMReX_Print.H>
 
 #include <AMReX_AlgVector.H>
+#include <AMReX_BiCGSTAB.H>
 #include <AMReX_RowIndex.H>
 #include <AMReX_SpMatrix.H>
 
@@ -99,10 +100,13 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 
     A.printToFile("A");
 
-    // ...
+    bicgstab_solve(phivec, A, rhsvec, 1.e-4, 0.0);
 
     // Copy data back
     phivec.copyTo(phi);
+
+    VisMF::Write(rhs, "rhs");
+    VisMF::Write(phi, "phi");
 }
 
 void main_main ()

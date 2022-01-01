@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <string>
+#include <type_traits>
 
 namespace amrex {
 
@@ -33,6 +34,8 @@ public:
     void resize (int stencil_size);
 
     void assemble ();
+
+    AlgPartition const& partition () const { return m_partition; }
 
     Long numLocalRows () const { return m_row_end - m_row_begin; }
     Long numGlobalRows () const { return m_partition.numGlobalRows(); }
@@ -77,7 +80,9 @@ SpMatrix<T,Allocator>::SpMatrix (AlgPartition const& partition, int stencil_size
 
 template <typename T, template<typename> class Allocator>
 SpMatrix<T,Allocator>::~SpMatrix ()
-{}
+{
+    static_assert(std::is_floating_point<T>::value, "SpMatrix is for floating point type only");
+}
 
 template <typename T, template<typename> class Allocator>
 void

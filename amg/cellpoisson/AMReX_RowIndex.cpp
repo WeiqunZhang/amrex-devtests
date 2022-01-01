@@ -31,7 +31,7 @@ void RowIndex::define (BoxArray const& ba, DistributionMapping const& dm,
     }
 
     Vector<Long> rows(ncells_allprocs.size()+1);
-    rows[0] = 0;
+    if (rows.size() > 0) { rows[0] = 0; }
     std::partial_sum(ncells_allprocs.begin(), ncells_allprocs.end(), rows.begin()+1);
 
     m_partition.define(std::move(rows));
