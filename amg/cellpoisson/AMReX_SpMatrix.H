@@ -36,7 +36,7 @@ public:
 
     Long numLocalRows () const { return m_row_end - m_row_begin; }
     Long numGlobalRows () const { return m_partition.numGlobalRows(); }
-    Long numNonZero () const { return m_nnz; }
+    Long numNonZero () const { return m_data.nnz; }
 
     T const* data () const { return m_data.mat.data(); }
     T      * data ()       { return m_data.mat.data(); }
@@ -58,12 +58,12 @@ private:
         Vec<T> mat;
         Vec<Long> col_index;
         Vec<Long> row_index;
+        Long nnz = -1;
     };
 
     AlgPartition m_partition;
     Long m_row_begin, m_row_end;
     CSR m_data; // We might need two CSRs, one for local data, the other for remote data
-    Long m_nnz = -1;
 };
 
 template <typename T, template<typename> class Allocator>
@@ -118,25 +118,25 @@ SpMatrix<T,Allocator>::assemble_doit ()
 
     auto is_valid = [=] AMREX_GPU_DEVICE (N i) -> N
                     {
-                        return (mat[i] != T(0)) && col[i] > 0;
+                        return (mat[i] != T(0)) && col[i] >= 0;
                     };
 
     Vec<N> psv(old_size);
     N* ps = psv.data();
-    m_nnz = Scan::PrefixSum<N>(static_cast<N>(old_size), is_valid,
-                               [=] AMREX_GPU_DEVICE (N i, N const& s)
-                               {
-                                   ps[i] = s;
-                                   if (i%stencil_size == 0) {
-                                       row[i/stencil_size] = s;
-                                   } else if (i == old_size-1) {
-                                       row[nrows] = s + static_cast<Long>(is_valid(i));
-                                   }
-                               },
-                               Scan::Type::exclusive, Scan::retSum);
+    m_data.nnz = Scan::PrefixSum<N>(static_cast<N>(old_size), is_valid,
+                                    [=] AMREX_GPU_DEVICE (N i, N const& s)
+                                    {
+                                        ps[i] = s;
+                                        if (i%stencil_size == 0) {
+                                            row[i/stencil_size] = s;
+                                        } else if (i == old_size-1) {
+                                            row[nrows] = s + static_cast<Long>(is_valid(i));
+                                        }
+                                    },
+                                    Scan::Type::exclusive, Scan::retSum);
 
-    Vec<T> mattmpv(m_nnz);
-    Vec<Long> coltmpv(m_nnz);
+    Vec<T> mattmpv(m_data.nnz);
+    Vec<Long> coltmpv(m_data.nnz);
     T* mattmp = mattmpv.data();
     Long* coltmp = coltmpv.data();
     amrex::ParallelFor(old_size, [=] AMREX_GPU_DEVICE (Long i) noexcept
@@ -157,7 +157,7 @@ SpMatrix<T,Allocator>::printToFile (std::string const& file) const
 {
     std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));
     AllPrintToFile os(file);
-    ofs << m_row_begin << " " << m_row_end << " " << m_nnz << "\n";
+    ofs << m_row_begin << " " << m_row_end << " " << m_data.nnz << "\n";
     for (Long i = 0, nrows = numLocalRows(); i < nrows; ++i) {
         Long nnz_row = m_data.row_index[i+1] - m_data.row_index[i];
         T    const* mat = m_data.mat.data()       + m_data.row_index[i];

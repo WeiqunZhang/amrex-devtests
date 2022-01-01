@@ -1,6 +1,8 @@
 #include <AMReX.H>
 #include <AMReX_Geometry.H>
 #include <AMReX_MultiFab.H>
+#include <AMReX_MultiFabUtil.H>
+#include <AMReX_VisMF.H>
 #include <AMReX_Print.H>
 
 #include <AMReX_AlgVector.H>
@@ -73,10 +75,10 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 #endif
         });
 
-        BaseFab<GpuArray<Real,stencil_size> > tmpcolfab
-            (vbx, 1, (GpuArray<Real,stencil_size>*)col);
+        BaseFab<GpuArray<Long,stencil_size> > tmpcolfab
+            (vbx, 1, (GpuArray<Long,stencil_size>*)col);
         amrex::fill(tmpcolfab,
-        [=] AMREX_GPU_HOST_DEVICE (GpuArray<Real,stencil_size>& sten, int i, int j, int k)
+        [=] AMREX_GPU_HOST_DEVICE (GpuArray<Long,stencil_size>& sten, int i, int j, int k)
         {
 #if (AMREX_SPACEDIM == 2)
             sten[0] = cid(i,j,k);
