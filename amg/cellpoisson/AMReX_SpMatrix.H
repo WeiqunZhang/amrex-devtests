@@ -13,6 +13,12 @@
 
 namespace amrex {
 
+#ifdef AMREX_USE_GPU
+using AlgInt = int; // CUB's SpMV does not support long int index
+#else
+using AlgInt = Long;
+#endif
+
 template <typename T, template<typename> class Allocator = DefaultAllocator>
 class SpMatrix
 {
@@ -39,14 +45,14 @@ public:
 
     Long numLocalRows () const { return m_row_end - m_row_begin; }
     Long numGlobalRows () const { return m_partition.numGlobalRows(); }
-    Long numNonZero () const { return m_data.nnz; }
+    Long numLocalNonZero () const { return m_data.nnz; }
 
     T const* data () const { return m_data.mat.data(); }
     T      * data ()       { return m_data.mat.data(); }
-    Long const* columnIndex () const { return m_data.col_index.data(); }
-    Long      * columnIndex ()       { return m_data.col_index.data(); }
-    Long const* rowIndex () const { return m_data.row_index.data(); }
-    Long      * rowIndex ()       { return m_data.row_index.data(); }
+    AlgInt const* columnIndex () const { return m_data.col_index.data(); }
+    AlgInt      * columnIndex ()       { return m_data.col_index.data(); }
+    AlgInt const* rowIndex () const { return m_data.row_index.data(); }
+    AlgInt      * rowIndex ()       { return m_data.row_index.data(); }
 
     void printToFile (std::string const& file) const;
 
@@ -59,8 +65,8 @@ private:
 
     struct CSR {
         Vec<T> mat;
-        Vec<Long> col_index;
-        Vec<Long> row_index;
+        Vec<AlgInt> col_index;
+        Vec<AlgInt> row_index;
         Long nnz = -1;
     };
 
@@ -91,6 +97,10 @@ SpMatrix<T,Allocator>::resize (int stencil_size)
     m_data.mat.resize(numLocalRows() * stencil_size);
     m_data.col_index.resize(numLocalRows() * stencil_size);
     m_data.row_index.resize(numLocalRows() + 1);
+#ifdef AMREX_USE_GPU
+    AMREX_ALWAYS_ASSERT(m_data.mat.size() <
+                        static_cast<std::size_t>(std::numeric_limits<AlgInt>::max()));
+#endif
 }
 
 template <typename T, template<typename> class Allocator>
@@ -118,8 +128,8 @@ SpMatrix<T,Allocator>::assemble_doit ()
     AMREX_ASSERT(static_cast<Long>(m_data.row_index.size()) == nrows + 1);
 
     T* mat = m_data.mat.data();
-    Long* col = m_data.col_index.data();
-    Long* row = m_data.row_index.data();
+    AlgInt* col = m_data.col_index.data();
+    AlgInt* row = m_data.row_index.data();
 
     auto is_valid = [=] AMREX_GPU_DEVICE (N i) -> N
                     {
@@ -135,15 +145,15 @@ SpMatrix<T,Allocator>::assemble_doit ()
                                         if (i%stencil_size == 0) {
                                             row[i/stencil_size] = s;
                                         } else if (i == old_size-1) {
-                                            row[nrows] = s + static_cast<Long>(is_valid(i));
+                                            row[nrows] = s + static_cast<AlgInt>(is_valid(i));
                                         }
                                     },
                                     Scan::Type::exclusive, Scan::retSum);
 
     Vec<T> mattmpv(m_data.nnz);
-    Vec<Long> coltmpv(m_data.nnz);
+    Vec<AlgInt> coltmpv(m_data.nnz);
     T* mattmp = mattmpv.data();
-    Long* coltmp = coltmpv.data();
+    AlgInt* coltmp = coltmpv.data();
     amrex::ParallelFor(old_size, [=] AMREX_GPU_DEVICE (Long i) noexcept
     {
         if (is_valid(i)) {
@@ -166,7 +176,7 @@ SpMatrix<T,Allocator>::printToFile (std::string const& file) const
     for (Long i = 0, nrows = numLocalRows(); i < nrows; ++i) {
         Long nnz_row = m_data.row_index[i+1] - m_data.row_index[i];
         T    const* mat = m_data.mat.data()       + m_data.row_index[i];
-        Long const* col = m_data.col_index.data() + m_data.row_index[i];
+        AlgInt const* col = m_data.col_index.data() + m_data.row_index[i];
         for (Long j = 0; j < nnz_row; ++j) {
             ofs << i << " " << col[j] << " " << mat[j] << "\n";
         }

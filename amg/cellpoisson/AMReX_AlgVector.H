@@ -36,6 +36,11 @@ public:
     Long numLocalRows () const { return m_end - m_begin; }
     Long numGlobalRows () const { return m_partition.numGlobalRows(); }
 
+    T const* data () const { return m_data.data(); }
+    T      * data ()       { return m_data.data(); }
+
+    void setVal (T val);
+
     template <typename FAB,
               std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
                                std::is_same<T,typename FAB::value_type>::value, int> = 0>
@@ -64,9 +69,19 @@ AlgVector<T,Allocator>::AlgVector (AlgPartition const& partition)
 {}
 
 template <typename T, template<typename> class Allocator>
-AlgVector<T,Allocator>::~AlgVector()
+AlgVector<T,Allocator>::~AlgVector ()
 {
     static_assert(std::is_floating_point<T>::value, "AlgVector is for floating point type only");
+}
+
+template <typename T, template<typename> class Allocator>
+void
+AlgVector<T,Allocator>::setVal (T val)
+{
+    Long n = m_data.size();
+    T* p = m_data.data();
+    ParallelFor(n, [=] AMREX_GPU_DEVICE (Long i) noexcept { p[i] = val; });
+    Gpu::streamSynchronize();
 }
 
 template <typename T, template<typename> class Allocator>

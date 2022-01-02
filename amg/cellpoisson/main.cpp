@@ -42,7 +42,7 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
         Long row_begin = rowidx.range(mfi).first;
 
         Real* mat = A.data() + row_begin*stencil_size;
-        Long* col = A.columnIndex() + row_begin*stencil_size;
+        AlgInt* col = A.columnIndex() + row_begin*stencil_size;
 
         BaseFab<GpuArray<Real,stencil_size> > tmpmatfab
             (vbx, 1, (GpuArray<Real,stencil_size>*)mat);
@@ -76,10 +76,10 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 #endif
         });
 
-        BaseFab<GpuArray<Long,stencil_size> > tmpcolfab
-            (vbx, 1, (GpuArray<Long,stencil_size>*)col);
+        BaseFab<GpuArray<AlgInt,stencil_size> > tmpcolfab
+            (vbx, 1, (GpuArray<AlgInt,stencil_size>*)col);
         amrex::fill(tmpcolfab,
-        [=] AMREX_GPU_HOST_DEVICE (GpuArray<Long,stencil_size>& sten, int i, int j, int k)
+        [=] AMREX_GPU_HOST_DEVICE (GpuArray<AlgInt,stencil_size>& sten, int i, int j, int k)
         {
 #if (AMREX_SPACEDIM == 2)
             sten[0] = cid(i,j,k);
