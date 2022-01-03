@@ -23,19 +23,18 @@ template <typename T, template<typename> class Allocator = DefaultAllocator>
 class SpMatrix
 {
 public:
-    typedef T value_type;
+    using value_type = T;
 
     template <class U>
     using Vec = PODVector<U,Allocator<U> >;
 
     SpMatrix (AlgPartition const& partition, int stencil_size);
 
-    ~SpMatrix ();
-
     SpMatrix (SpMatrix const&) = delete;
-    SpMatrix (SpMatrix &&) = delete;
-    void operator= (SpMatrix const&) = delete;
-    void operator= (SpMatrix &&) = delete;
+    SpMatrix& operator= (SpMatrix const&) = delete;
+
+    SpMatrix (SpMatrix &&) = default;
+    SpMatrix& operator= (SpMatrix &&) = default;
 
     void resize (int stencil_size);
 
@@ -51,8 +50,8 @@ public:
     T      * data ()       { return m_data.mat.data(); }
     AlgInt const* columnIndex () const { return m_data.col_index.data(); }
     AlgInt      * columnIndex ()       { return m_data.col_index.data(); }
-    AlgInt const* rowIndex () const { return m_data.row_index.data(); }
-    AlgInt      * rowIndex ()       { return m_data.row_index.data(); }
+    AlgInt const* rowOffset () const { return m_data.row_offset.data(); }
+    AlgInt      * rowOffset ()       { return m_data.row_offset.data(); }
 
     void printToFile (std::string const& file) const;
 
@@ -66,7 +65,7 @@ private:
     struct CSR {
         Vec<T> mat;
         Vec<AlgInt> col_index;
-        Vec<AlgInt> row_index;
+        Vec<AlgInt> row_offset;
         Long nnz = -1;
     };
 
@@ -81,13 +80,8 @@ SpMatrix<T,Allocator>::SpMatrix (AlgPartition const& partition, int stencil_size
       m_row_begin(partition[ParallelDescriptor::MyProc()]),
       m_row_end(partition[ParallelDescriptor::MyProc()+1])
 {
-    resize(stencil_size);
-}
-
-template <typename T, template<typename> class Allocator>
-SpMatrix<T,Allocator>::~SpMatrix ()
-{
     static_assert(std::is_floating_point<T>::value, "SpMatrix is for floating point type only");
+    resize(stencil_size);
 }
 
 template <typename T, template<typename> class Allocator>
@@ -96,7 +90,7 @@ SpMatrix<T,Allocator>::resize (int stencil_size)
 {
     m_data.mat.resize(numLocalRows() * stencil_size);
     m_data.col_index.resize(numLocalRows() * stencil_size);
-    m_data.row_index.resize(numLocalRows() + 1);
+    m_data.row_offset.resize(numLocalRows() + 1);
 #ifdef AMREX_USE_GPU
     AMREX_ALWAYS_ASSERT(m_data.mat.size() <
                         static_cast<std::size_t>(std::numeric_limits<AlgInt>::max()));
@@ -125,11 +119,11 @@ SpMatrix<T,Allocator>::assemble_doit ()
     const int stencil_size = old_size / nrows;
     AMREX_ASSERT(nrows*stencil_size == static_cast<Long>(m_data.mat.size()));
     AMREX_ASSERT(m_data.mat.size() == m_data.col_index.size());
-    AMREX_ASSERT(static_cast<Long>(m_data.row_index.size()) == nrows + 1);
+    AMREX_ASSERT(static_cast<Long>(m_data.row_offset.size()) == nrows + 1);
 
     T* mat = m_data.mat.data();
     AlgInt* col = m_data.col_index.data();
-    AlgInt* row = m_data.row_index.data();
+    AlgInt* row = m_data.row_offset.data();
 
     auto is_valid = [=] AMREX_GPU_DEVICE (N i) -> N
                     {
@@ -174,9 +168,9 @@ SpMatrix<T,Allocator>::printToFile (std::string const& file) const
     AllPrintToFile os(file);
     ofs << m_row_begin << " " << m_row_end << " " << m_data.nnz << "\n";
     for (Long i = 0, nrows = numLocalRows(); i < nrows; ++i) {
-        Long nnz_row = m_data.row_index[i+1] - m_data.row_index[i];
-        T    const* mat = m_data.mat.data()       + m_data.row_index[i];
-        AlgInt const* col = m_data.col_index.data() + m_data.row_index[i];
+        Long nnz_row = m_data.row_offset[i+1] - m_data.row_offset[i];
+        T    const* mat = m_data.mat.data()       + m_data.row_offset[i];
+        AlgInt const* col = m_data.col_index.data() + m_data.row_offset[i];
         for (Long j = 0; j < nnz_row; ++j) {
             ofs << i << " " << col[j] << " " << mat[j] << "\n";
         }

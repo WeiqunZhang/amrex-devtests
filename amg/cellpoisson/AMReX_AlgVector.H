@@ -13,23 +13,22 @@
 
 namespace amrex {
 
-template <typename T, template<typename> class Allocator = DefaultAllocator>
+template <typename T, typename Allocator = DefaultAllocator<T> >
 class AlgVector
 {
 public:
     using value_type = T;
+    using allocator_type = Allocator;
 
-    template <class U>
-    using Vec = PODVector<U,Allocator<U> >;
+    using Vec = PODVector<T,Allocator>;
 
     AlgVector (AlgPartition const& partition);
 
-    ~AlgVector ();
+    AlgVector (AlgVector<T, Allocator> const&) = delete;
+    AlgVector& operator= (AlgVector<T, Allocator> const&) = delete;
 
-    AlgVector (AlgVector const&) = delete;
-    AlgVector (AlgVector &&) = delete;
-    void operator= (AlgVector const&) = delete;
-    void operator= (AlgVector &&) = delete;
+    AlgVector (AlgVector<T, Allocator> &&) noexcept = default;
+    AlgVector& operator= (AlgVector<T, Allocator> &&) noexcept = default;
 
     AlgPartition const& partition () const { return m_partition; }
 
@@ -57,24 +56,20 @@ private:
     AlgPartition m_partition;
     Long m_begin = 0;
     Long m_end = 0;
-    Vec<T> m_data;
+    Vec m_data;
 };
 
-template <typename T, template<typename> class Allocator>
+template <typename T, typename Allocator>
 AlgVector<T,Allocator>::AlgVector (AlgPartition const& partition)
     : m_partition(partition),
       m_begin(partition[ParallelDescriptor::MyProc()]),
       m_end(partition[ParallelDescriptor::MyProc()+1]),
       m_data(m_end-m_begin)
-{}
-
-template <typename T, template<typename> class Allocator>
-AlgVector<T,Allocator>::~AlgVector ()
 {
     static_assert(std::is_floating_point<T>::value, "AlgVector is for floating point type only");
 }
 
-template <typename T, template<typename> class Allocator>
+template <typename T, typename Allocator>
 void
 AlgVector<T,Allocator>::setVal (T val)
 {
@@ -84,7 +79,7 @@ AlgVector<T,Allocator>::setVal (T val)
     Gpu::streamSynchronize();
 }
 
-template <typename T, template<typename> class Allocator>
+template <typename T, typename Allocator>
 template <typename FAB, std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
                                          std::is_same<T,typename FAB::value_type>::value, int> >
 void
@@ -107,7 +102,7 @@ AlgVector<T,Allocator>::copyFrom (FabArray<FAB> const& fa)
     }
 }
 
-template <typename T, template<typename> class Allocator>
+template <typename T, typename Allocator>
 template <typename FAB, std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
                                          std::is_same<T,typename FAB::value_type>::value, int> >
 void
@@ -130,7 +125,7 @@ AlgVector<T,Allocator>::copyTo (FabArray<FAB> & fa) const
     }
 }
 
-template <typename T, template<typename> class Allocator>
+template <typename T, typename Allocator>
 void AlgVector<T,Allocator>::printToFile (std::string const& file) const
 {
     std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));
@@ -139,6 +134,29 @@ void AlgVector<T,Allocator>::printToFile (std::string const& file) const
     for (Long i = 0, N = m_data.size(); i < N; ++i) {
         ofs << i+m_begin << " " << m_data[i] << "\n";
     }
+}
+
+template <class V, class Enable = void> struct IsAlgVector : std::false_type {};
+//
+template <class V>
+struct IsAlgVector<V, typename std::enable_if<std::is_same<AlgVector<typename V::value_type,
+                                                                     typename V::allocator_type>,
+                                                           V>::value>::type>
+    : std::true_type {};
+
+template <typename V1, typename V2, typename F>
+std::enable_if_t<IsAlgVector<std::decay_t<V1> >::value &&
+                 IsAlgVector<std::decay_t<V2> >::value>
+ForEach (V1 && x, V2 && y, F&& f)
+{
+    AMREX_ASSERT(x.numLocalRows() == y.numLocalRows());
+    Long n = x.numLocalRows();
+    auto px = x.data();
+    auto py = y.data();
+    ParallelFor(n, [=] AMREX_GPU_DEVICE (Long i) noexcept
+    {
+        f(px[i], py[i]);
+    });
 }
 
 }

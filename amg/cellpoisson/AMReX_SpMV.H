@@ -25,9 +25,9 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
     T const* AMREX_RESTRICT px = x.data();
     T const* AMREX_RESTRICT mat = A.data();
     AlgInt const* AMREX_RESTRICT col = A.columnIndex();
-    AlgInt const* AMREX_RESTRICT row = A.rowIndex();
+    AlgInt const* AMREX_RESTRICT row = A.rowOffset();
 
-#ifdef AMREX_USE_GPU
+#if defined(AMREX_USE_GPU)
 
 #if defined(AMREX_USE_CUDA)
 
@@ -56,7 +56,6 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
 
 #endif
 
-    Gpu::streamSynchronize();
     AMREX_GPU_ERROR_CHECK();
 
 #else

@@ -14,8 +14,7 @@ class AlgPartition
 public:
     AlgPartition ();
     AlgPartition (Vector<Long> const& rows);
-    AlgPartition (Vector<Long>&& rows);
-    ~AlgPartition ();
+    AlgPartition (Vector<Long>&& rows) noexcept;
 
     void define (Vector<Long> const& rows);
     void define (Vector<Long>&& rows);

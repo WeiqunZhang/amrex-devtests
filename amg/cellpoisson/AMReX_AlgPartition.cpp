@@ -10,11 +10,8 @@ AlgPartition::AlgPartition (Vector<Long> const& rows)
     : m_ref(std::make_shared<Ref>(rows))
 {}
 
-AlgPartition::AlgPartition (Vector<Long>&& rows)
+AlgPartition::AlgPartition (Vector<Long>&& rows) noexcept
     : m_ref(std::make_shared<Ref>(std::move(rows)))
-{}
-
-AlgPartition::~AlgPartition ()
 {}
 
 void AlgPartition::define (Vector<Long> const& rows)
