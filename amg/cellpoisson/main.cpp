@@ -100,7 +100,11 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 
     A.printToFile("A");
 
-    bicgstab_solve(phivec, A, rhsvec, 1.e-4, 0.0);
+    Real reltol = 1.e-4_rt;
+    Real abstol = 0._rt;
+    int verbose = 4;
+    int ret = bicgstab_solve(phivec, A, rhsvec, reltol, abstol, verbose);
+    amrex::Print() << "bicgstab_solve return value: " << ret << std::endl;
 
     // Copy data back
     phivec.copyTo(phi);
@@ -111,8 +115,8 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
 
 void main_main ()
 {
-    int n_cell = 4;
-    int max_grid_size = 16;
+    int n_cell = 16;
+    int max_grid_size = 4;
 
     Geometry geom;
     {

@@ -7,8 +7,8 @@
 
 namespace amrex {
 
-void bicgstab_solve (AlgVector<Real>& x, SpMatrix<Real> const& A, AlgVector<Real> const& b,
-                     Real eps_rel, Real eps_abs);
+int bicgstab_solve (AlgVector<Real>& x, SpMatrix<Real> const& A, AlgVector<Real> const& b,
+                    Real eps_rel, Real eps_abs, int verbose = 0);
 
 }
 

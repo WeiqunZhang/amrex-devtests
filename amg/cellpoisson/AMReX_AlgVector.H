@@ -39,6 +39,13 @@ public:
     T      * data ()       { return m_data.data(); }
 
     void setVal (T val);
+    void setValAsync (T val);
+
+    void copy (AlgVector<T> const& rhs);
+    void copyAsync (AlgVector<T> const& rhs);
+
+    void plus (AlgVector<T> const& rhs);
+    void plusAsync (AlgVector<T> const& rhs);
 
     T norminf (bool local = false) const;
 
@@ -74,10 +81,52 @@ AlgVector<T,Allocator>::AlgVector (AlgPartition const& partition)
 template <typename T, typename Allocator>
 void AlgVector<T,Allocator>::setVal (T val)
 {
+    setValAsync(val);
+    Gpu::streamSynchronize();
+}
+
+template <typename T, typename Allocator>
+void AlgVector<T,Allocator>::setValAsync (T val)
+{
     Long n = m_data.size();
     T* p = m_data.data();
     ParallelFor(n, [=] AMREX_GPU_DEVICE (Long i) noexcept { p[i] = val; });
+}
+
+template <typename T, typename Allocator>
+void AlgVector<T,Allocator>::copy (AlgVector<T> const& rhs)
+{
+    copyAsync(rhs);
     Gpu::streamSynchronize();
+}
+
+template <typename T, typename Allocator>
+void AlgVector<T,Allocator>::copyAsync (AlgVector<T> const& rhs)
+{
+    Long n = m_data.size();
+    T* dst = m_data.data();
+    T const* src = rhs.data();
+#ifdef AMREX_USE_GPU
+    Gpu::dtod_memcpy_async(dst, src, n*sizeof(T));
+#else
+    std::memcpy(dst, src, n*sizeof(T));
+#endif
+}
+
+template <typename T, typename Allocator>
+void AlgVector<T,Allocator>::plus (AlgVector<T> const& rhs)
+{
+    plusAsync(rhs);
+    Gpu::streamSynchronize();
+}
+
+template <typename T, typename Allocator>
+void AlgVector<T,Allocator>::plusAsync (AlgVector<T> const& rhs)
+{
+    Long n = m_data.size();
+    T* dst = m_data.data();
+    T const* src = rhs.data();
+    ParallelFor(n, [=] AMREX_GPU_DEVICE (Long i) noexcept { dst[i] += src[i]; });
 }
 
 template <typename T, typename Allocator>
@@ -246,6 +295,23 @@ ForEach (V1 && x, V2 && y, V3 && z, V4 && a, V5 && b, F&& f)
     {
         f(px[i], py[i], pz[i], pa[i], pb[i]);
     });
+}
+
+template <typename T>
+T Dot (AlgVector<T> const& x, AlgVector<T> const& y, bool local = false)
+{
+    AMREX_ASSERT(x.numLocalRows() == y.numLocalRows());
+    Long n = x.numLocalRows();
+    auto px = x.data();
+    auto py = y.data();
+    T r = Reduce::Sum<T>(n, [=] AMREX_GPU_DEVICE (Long i) noexcept
+                         {
+                             return px[i] * py[i];
+                         });
+    if (!local) {
+        ParallelAllReduce::Sum(r, ParallelContext::CommunicatorSub());
+    }
+    return r;
 }
 
 }
