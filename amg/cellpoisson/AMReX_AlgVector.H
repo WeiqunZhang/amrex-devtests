@@ -24,8 +24,8 @@ public:
 
     AlgVector (AlgPartition const& partition);
 
-    AlgVector (AlgVector<T, Allocator> const&) = delete;
-    AlgVector& operator= (AlgVector<T, Allocator> const&) = delete;
+    AlgVector (AlgVector<T, Allocator> const&) = default;
+    AlgVector& operator= (AlgVector<T, Allocator> const&) = default;
 
     AlgVector (AlgVector<T, Allocator> &&) noexcept = default;
     AlgVector& operator= (AlgVector<T, Allocator> &&) noexcept = default;
@@ -39,6 +39,8 @@ public:
     T      * data ()       { return m_data.data(); }
 
     void setVal (T val);
+
+    T norminf (bool local = false) const;
 
     template <typename FAB,
               std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
@@ -70,8 +72,7 @@ AlgVector<T,Allocator>::AlgVector (AlgPartition const& partition)
 }
 
 template <typename T, typename Allocator>
-void
-AlgVector<T,Allocator>::setVal (T val)
+void AlgVector<T,Allocator>::setVal (T val)
 {
     Long n = m_data.size();
     T* p = m_data.data();
@@ -80,10 +81,24 @@ AlgVector<T,Allocator>::setVal (T val)
 }
 
 template <typename T, typename Allocator>
+T AlgVector<T,Allocator>::norminf (bool local) const
+{
+    Long n = m_data.size();
+    T const* p = m_data.data();
+    T r = Reduce::Max<T>(n, [=] AMREX_GPU_DEVICE (Long i) noexcept
+                         {
+                             return amrex::Math::abs(p[i]);
+                         });
+    if (!local) {
+        ParallelAllReduce::Max(r, ParallelContext::CommunicatorSub());
+    }
+    return r;
+}
+
+template <typename T, typename Allocator>
 template <typename FAB, std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
                                          std::is_same<T,typename FAB::value_type>::value, int> >
-void
-AlgVector<T,Allocator>::copyFrom (FabArray<FAB> const& fa)
+void AlgVector<T,Allocator>::copyFrom (FabArray<FAB> const& fa)
 {
     AMREX_ASSERT(fa.is_cell_centered());
 
@@ -105,8 +120,7 @@ AlgVector<T,Allocator>::copyFrom (FabArray<FAB> const& fa)
 template <typename T, typename Allocator>
 template <typename FAB, std::enable_if_t<amrex::IsBaseFab<FAB>::value &&
                                          std::is_same<T,typename FAB::value_type>::value, int> >
-void
-AlgVector<T,Allocator>::copyTo (FabArray<FAB> & fa) const
+void AlgVector<T,Allocator>::copyTo (FabArray<FAB> & fa) const
 {
     AMREX_ASSERT(fa.is_cell_centered());
 
@@ -144,6 +158,18 @@ struct IsAlgVector<V, typename std::enable_if<std::is_same<AlgVector<typename V:
                                                            V>::value>::type>
     : std::true_type {};
 
+template <typename V1, typename F>
+std::enable_if_t<IsAlgVector<std::decay_t<V1> >::value>
+ForEach (V1 && x, F&& f)
+{
+    Long n = x.numLocalRows();
+    auto px = x.data();
+    ParallelFor(n, [=] AMREX_GPU_DEVICE (Long i) noexcept
+    {
+        f(px[i]);
+    });
+}
+
 template <typename V1, typename V2, typename F>
 std::enable_if_t<IsAlgVector<std::decay_t<V1> >::value &&
                  IsAlgVector<std::decay_t<V2> >::value>
@@ -156,6 +182,69 @@ ForEach (V1 && x, V2 && y, F&& f)
     ParallelFor(n, [=] AMREX_GPU_DEVICE (Long i) noexcept
     {
         f(px[i], py[i]);
+    });
+}
+
+template <typename V1, typename V2, typename V3, typename F>
+std::enable_if_t<IsAlgVector<std::decay_t<V1> >::value &&
+                 IsAlgVector<std::decay_t<V2> >::value &&
+                 IsAlgVector<std::decay_t<V3> >::value>
+ForEach (V1 && x, V2 && y, V3 && z, F&& f)
+{
+    AMREX_ASSERT(x.numLocalRows() == y.numLocalRows());
+    AMREX_ASSERT(x.numLocalRows() == z.numLocalRows());
+    Long n = x.numLocalRows();
+    auto px = x.data();
+    auto py = y.data();
+    auto pz = z.data();
+    ParallelFor(n, [=] AMREX_GPU_DEVICE (Long i) noexcept
+    {
+        f(px[i], py[i], pz[i]);
+    });
+}
+
+template <typename V1, typename V2, typename V3, typename V4, typename F>
+std::enable_if_t<IsAlgVector<std::decay_t<V1> >::value &&
+                 IsAlgVector<std::decay_t<V2> >::value &&
+                 IsAlgVector<std::decay_t<V3> >::value &&
+                 IsAlgVector<std::decay_t<V4> >::value>
+ForEach (V1 && x, V2 && y, V3 && z, V4 && a, F&& f)
+{
+    AMREX_ASSERT(x.numLocalRows() == y.numLocalRows());
+    AMREX_ASSERT(x.numLocalRows() == z.numLocalRows());
+    AMREX_ASSERT(x.numLocalRows() == a.numLocalRows());
+    Long n = x.numLocalRows();
+    auto px = x.data();
+    auto py = y.data();
+    auto pz = z.data();
+    auto pa = a.data();
+    ParallelFor(n, [=] AMREX_GPU_DEVICE (Long i) noexcept
+    {
+        f(px[i], py[i], pz[i], pa[i]);
+    });
+}
+
+template <typename V1, typename V2, typename V3, typename V4, typename V5, typename F>
+std::enable_if_t<IsAlgVector<std::decay_t<V1> >::value &&
+                 IsAlgVector<std::decay_t<V2> >::value &&
+                 IsAlgVector<std::decay_t<V3> >::value &&
+                 IsAlgVector<std::decay_t<V4> >::value &&
+                 IsAlgVector<std::decay_t<V5> >::value>
+ForEach (V1 && x, V2 && y, V3 && z, V4 && a, V5 && b, F&& f)
+{
+    AMREX_ASSERT(x.numLocalRows() == y.numLocalRows());
+    AMREX_ASSERT(x.numLocalRows() == z.numLocalRows());
+    AMREX_ASSERT(x.numLocalRows() == a.numLocalRows());
+    AMREX_ASSERT(x.numLocalRows() == b.numLocalRows());
+    Long n = x.numLocalRows();
+    auto px = x.data();
+    auto py = y.data();
+    auto pz = z.data();
+    auto pa = a.data();
+    auto pb = b.data();
+    ParallelFor(n, [=] AMREX_GPU_DEVICE (Long i) noexcept
+    {
+        f(px[i], py[i], pz[i], pa[i], pb[i]);
     });
 }
 

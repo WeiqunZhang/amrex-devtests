@@ -6,19 +6,26 @@ namespace amrex {
 void bicgstab_solve (AlgVector<Real>& x, SpMatrix<Real> const& A, AlgVector<Real> const& b,
                      Real eps_rel, Real eps_abs)
 {
-    AlgVector<Real> r(x.partition());
+    AlgVector<Real> xorig(x.partition());
+    AlgVector<Real> p    (x.partition());
+    AlgVector<Real> r    (x.partition());
+    AlgVector<Real> s    (x.partition());
+    AlgVector<Real> rh   (x.partition());
+    AlgVector<Real> v    (x.partition());
+    AlgVector<Real> t    (x.partition());
 
-    // compute residual: r = b - A*x;
+    SpMV(r, A, x); // r = A*x
 
-    SpMV(r, A, x);
-
-    amrex::ForEach(r, b,
-    [=] AMREX_GPU_DEVICE (Real& ri, Real const& bi) noexcept
+    amrex::ForEach(r, b, xorig, x, rh,
+    [=] AMREX_GPU_DEVICE (Real& ri, Real const& bi, Real& xoi, Real& xi, Real& rhi) noexcept
     {
         ri = bi - ri;
+        xoi = xi;
+        xi = 0._rt;
+        rhi = ri;
     });
 
-    r.printToFile("Ax");
+    Real rnorm = r.norminf();
 }
 
 }
