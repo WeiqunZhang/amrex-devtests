@@ -1,16 +1,12 @@
 CEXE_headers += AMReX_AlgVector.H
-CEXE_sources += AMReX_AlgVector.cpp
-
 CEXE_headers += AMReX_SpMatrix.H
-CEXE_sources += AMReX_SpMatrix.cpp
+
+CEXE_headers += AMReX_SpMV.H
+
+CEXE_headers += AMReX_BiCGSTAB.H
 
 CEXE_headers += AMReX_AlgPartition.H
 CEXE_sources += AMReX_AlgPartition.cpp
 
 CEXE_headers += AMReX_RowIndex.H
 CEXE_sources += AMReX_RowIndex.cpp
-
-CEXE_headers += AMReX_BiCGSTAB.H
-CEXE_sources += AMReX_BiCGSTAB.cpp
-
-CEXE_headers += AMReX_SpMV.H
