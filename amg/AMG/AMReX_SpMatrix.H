@@ -7,14 +7,20 @@
 #include <AMReX_INT.H>
 #include <AMReX_Scan.H>
 
+#if defined(AMREX_USE_HIP)
+#include <rocsparse.h>
+#endif
+
 #include <fstream>
 #include <string>
 #include <type_traits>
 
 namespace amrex {
 
-#ifdef AMREX_USE_GPU
+#if defined(AMREX_USE_CUDA)
 using AlgInt = int; // CUB's SpMV does not support long int index
+#elif defined(AMREX_USE_HIP)
+using AlgInt = rocsparse_int;
 #else
 using AlgInt = Long;
 #endif

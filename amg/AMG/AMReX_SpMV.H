@@ -31,6 +31,8 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
 
 #if defined(AMREX_USE_GPU)
 
+    y.setVal(0); // xxxxx: Is this necessary?
+
 #if defined(AMREX_USE_CUDA)
 
 #if defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 11)
@@ -50,11 +52,33 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
 
 #elif defined(AMREX_USE_HIP)
 
-    amrex::Abort("xxxxx HIP todo: SpMV");
+    rocsparse_handle handle;
+    rocsparse_create_handle(&handle);
+    rocsparse_set_stream(handle, Gpu::gpuStream());
+
+    rocsparse_mat_descr descr;
+    rocsparse_create_mat_descr(&descr);
+
+    rocsparse_mat_info info;
+    rocsparse_create_mat_info(&info);
+
+    if constexpr (std::is_same<T,double>::value) {
+        double alpha = 1.0;
+        double beta = 0.0;
+        rocsparse_dcsrmv(handle, rocsparse_operation_none, nrows, ncols, nnz, &alpha, descr,
+                         mat, row, col, info, px, &beta, py);
+    } else {
+        float alpha = 1.0f;
+        float beta = 0.0f;
+        rocsparse_scsrmv(handle, rocsparse_operation_none, nrows, ncols, nnz, &alpha, descr,
+                         mat, row, col, info, px, &beta, py);
+    }
+
+    rocsparse_destroy_mat_info(info);
+    rocsparse_destroy_mat_descr(descr);
+    rocsparse_destroy_handle(handle);
 
 #elif defined(AMREX_USE_DPCPP)
-
-    y.setVal(0); // xxxxx DPCPP todo: Is this necessary?
 
     mkl::sparse::matrix_handle_t handle{};
     mkl::sparse::set_csr_data(handle, nrows, ncols, mkl::index_base::zero,

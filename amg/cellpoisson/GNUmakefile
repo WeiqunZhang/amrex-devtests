@@ -17,6 +17,11 @@ BL_NO_FORT = TRUE
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
+ifeq ($(USE_HIP),TRUE)
+  LIBRARY_LOCATIONS += $(ROC_PATH)/rocsparse/lib
+  LIBRARIES += -Wl,--rpath=$(ROC_PATH)/rocsparse/lib -lrocsparse
+endif
+
 include ./Make.package
 
 include ../AMG/Make.package
