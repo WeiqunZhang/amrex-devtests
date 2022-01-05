@@ -165,7 +165,6 @@ void
 SpMatrix<T,Allocator>::printToFile (std::string const& file) const
 {
     std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));
-    AllPrintToFile os(file);
     ofs << m_row_begin << " " << m_row_end << " " << m_data.nnz << "\n";
     for (Long i = 0, nrows = numLocalRows(); i < nrows; ++i) {
         Long nnz_row = m_data.row_offset[i+1] - m_data.row_offset[i];

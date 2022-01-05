@@ -26,12 +26,14 @@ public:
     const FabArray<BaseFab<Long> >& index () const;
     const AlgPartition& partition () const;
 
-    std::pair<Long,Long> range (MFIter const& mfi) const;
+    std::pair<Long,Long> globalRange (MFIter const& mfi) const;
+    std::pair<Long,Long> localRange (MFIter const& mfi) const;
 
 private:
     Geometry m_geom;
     FabArray<BaseFab<Long> > m_index;
-    LayoutData<std::pair<Long,Long> > m_range;
+    LayoutData<std::pair<Long,Long> > m_global_range;
+    LayoutData<std::pair<Long,Long> > m_local_range;
     AlgPartition m_partition;
 };
 

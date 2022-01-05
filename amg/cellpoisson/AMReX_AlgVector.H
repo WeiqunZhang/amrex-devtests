@@ -192,7 +192,6 @@ template <typename T, typename Allocator>
 void AlgVector<T,Allocator>::printToFile (std::string const& file) const
 {
     std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));
-    AllPrintToFile os(file);
     ofs << m_begin << " " << m_end << "\n";
     for (Long i = 0, N = m_data.size(); i < N; ++i) {
         ofs << i+m_begin << " " << m_data[i] << "\n";

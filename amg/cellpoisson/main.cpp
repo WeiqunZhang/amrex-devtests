@@ -39,10 +39,10 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
         Box const& vbx = mfi.validbox();
         auto const& cid = cell_id.const_array(mfi);
 
-        Long row_begin = rowidx.range(mfi).first;
+        Long lrow_begin = rowidx.localRange(mfi).first;
 
-        Real* mat = A.data() + row_begin*stencil_size;
-        AlgInt* col = A.columnIndex() + row_begin*stencil_size;
+        Real* mat = A.data() + lrow_begin*stencil_size;
+        AlgInt* col = A.columnIndex() + lrow_begin*stencil_size;
 
         BaseFab<GpuArray<Real,stencil_size> > tmpmatfab
             (vbx, 1, (GpuArray<Real,stencil_size>*)mat);
