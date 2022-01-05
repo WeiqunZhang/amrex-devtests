@@ -164,6 +164,7 @@ template <typename T, template<typename> class Allocator>
 void
 SpMatrix<T,Allocator>::printToFile (std::string const& file) const
 {
+    const Long lrow_begin = m_partition[ParallelDescriptor::MyProc()];
     std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));
     ofs << m_row_begin << " " << m_row_end << " " << m_data.nnz << "\n";
     for (Long i = 0, nrows = numLocalRows(); i < nrows; ++i) {
@@ -171,7 +172,7 @@ SpMatrix<T,Allocator>::printToFile (std::string const& file) const
         T    const* mat = m_data.mat.data()       + m_data.row_offset[i];
         AlgInt const* col = m_data.col_index.data() + m_data.row_offset[i];
         for (Long j = 0; j < nnz_row; ++j) {
-            ofs << i << " " << col[j] << " " << mat[j] << "\n";
+            ofs << i+lrow_begin << " " << col[j] << " " << mat[j] << "\n";
         }
     }
 }
