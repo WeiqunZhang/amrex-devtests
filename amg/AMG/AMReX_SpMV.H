@@ -7,6 +7,8 @@
 
 #if defined(AMREX_USE_CUDA) && defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 11)
 #  include <cub/cub.cuh>
+#elif defined(AMREX_USE_DPCPP)
+#  include <oneapi/mkl/spblas.hpp>
 #endif
 
 namespace amrex {
@@ -52,7 +54,13 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
 
 #elif defined(AMREX_USE_DPCPP)
 
-    amrex::Abort("xxxxx DPCPP todo: SpMV");
+    y.setVal(0); // xxxxx DPCPP todo: Is this necessary?
+
+    mkl::sparse::matrix_handle_t handle{};
+    mkl::sparse::set_csr_data(handle, nrows, ncols, mkl::index_base::zero,
+                              (AlgInt*)row, (AlgInt*)col, (T*)mat);
+    mkl::sparse::gemv(Gpu::Device::streamQueue(), mkl::transpose::nontrans,
+                      T(1), handle, px, T(0), py);
 
 #endif
 
