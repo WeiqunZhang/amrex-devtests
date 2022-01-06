@@ -22,8 +22,8 @@ ifeq ($(USE_CUDA),TRUE)
 endif
 
 ifeq ($(USE_HIP),TRUE)
-  LIBRARY_LOCATIONS += $(ROC_PATH)/rocsparse/lib
-  LIBRARIES += -Wl,--rpath=$(ROC_PATH)/rocsparse/lib -lrocsparse
+  LIBRARY_LOCATIONS += $(ROC_PATH)/hipsparse/lib
+  LIBRARIES += -Wl,--rpath=$(ROC_PATH)/hipsparse/lib -lhipsparse
 endif
 
 include ./Make.package

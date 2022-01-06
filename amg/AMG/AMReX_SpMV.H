@@ -10,6 +10,8 @@
 //#  if defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 11)
 //#    include <cub/cub.cuh>
 //#  endif
+#elif defined(AMREX_USE_HIP)
+#  include <hipsparse.h>
 #elif defined(AMREX_USE_DPCPP)
 #  include <oneapi/mkl/spblas.hpp>
 #endif
@@ -94,31 +96,43 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
 
 #elif defined(AMREX_USE_HIP)
 
-    rocsparse_handle handle;
-    rocsparse_create_handle(&handle);
-    rocsparse_set_stream(handle, Gpu::gpuStream());
+    hipsparseHandle_t handle;
+    hipsparseCreate(&handle);
+    hipsparseSetStream(handle, Gpu::gpuStream());
 
-    rocsparse_mat_descr descr;
-    rocsparse_create_mat_descr(&descr);
+    hipDataType data_type = (sizeof(T) == sizeof(double)) ? HIP_R_64F : HIP_R_32F;
+    hipsparseIndexType_t index_type = (sizeof(AlgInt) == sizeof(int)) ?
+        HIPSPARSE_INDEX_32I : HIPSPARSE_INDEX_64I;
 
-    rocsparse_mat_info info;
-    rocsparse_create_mat_info(&info);
+    hipsparseSpMatDescr_t mat_descr;
+    hipsparseCreateCsr(&mat_descr, nrows, ncols, nnz, (void*)row, (void*)col, (void*)mat,
+                       index_type, index_type, HIPSPARSE_INDEX_BASE_ZERO, data_type);
 
-    if constexpr (std::is_same<T,double>::value) {
-        double alpha = 1.0;
-        double beta = 0.0;
-        rocsparse_dcsrmv(handle, rocsparse_operation_none, nrows, ncols, nnz, &alpha, descr,
-                         mat, row, col, info, px, &beta, py);
-    } else {
-        float alpha = 1.0f;
-        float beta = 0.0f;
-        rocsparse_scsrmv(handle, rocsparse_operation_none, nrows, ncols, nnz, &alpha, descr,
-                         mat, row, col, info, px, &beta, py);
-    }
+    hipsparseDnVecDescr_t x_descr;
+    hipsparseCreateDnVec(&x_descr, ncols, (void*)px, data_type);
 
-    rocsparse_destroy_mat_info(info);
-    rocsparse_destroy_mat_descr(descr);
-    rocsparse_destroy_handle(handle);
+    hipsparseDnVecDescr_t y_descr;
+    hipsparseCreateDnVec(&y_descr, nrows, (void*)py, data_type);
+
+    T alpha = T(1.0);
+    T beta = T(0.0);
+
+    std::size_t buffer_size;
+    hipsparseSpMV_bufferSize(handle, HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_descr, x_descr,
+                             &beta, y_descr, data_type, HIPSPARSE_SPMV_ALG_DEFAULT, &buffer_size);
+
+    void* pbuffer = (void*)The_Arena()->alloc(buffer_size);
+
+    hipsparseSpMV(handle, HIPSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_descr, x_descr,
+                  &beta, y_descr, data_type, HIPSPARSE_SPMV_ALG_DEFAULT, pbuffer);
+
+    Gpu::streamSynchronize();
+
+    hipsparseDestroySpMat(mat_descr);
+    hipsparseDestroyDnVec(x_descr);
+    hipsparseDestroyDnVec(y_descr);
+    hipsparseDestroy(handle);
+    The_Arena()->free(pbuffer);
 
 #elif defined(AMREX_USE_DPCPP)
 

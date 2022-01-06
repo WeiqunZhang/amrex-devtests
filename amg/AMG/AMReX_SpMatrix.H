@@ -7,21 +7,13 @@
 #include <AMReX_INT.H>
 #include <AMReX_Scan.H>
 
-#if defined(AMREX_USE_HIP)
-#include <rocsparse.h>
-#endif
-
 #include <fstream>
 #include <string>
 #include <type_traits>
 
 namespace amrex {
 
-#if defined(AMREX_USE_HIP)
-using AlgInt = rocsparse_int;
-#else
 using AlgInt = Long;
-#endif
 
 template <typename T, template<typename> class Allocator = DefaultAllocator>
 class SpMatrix
