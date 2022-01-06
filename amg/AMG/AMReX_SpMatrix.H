@@ -17,9 +17,7 @@
 
 namespace amrex {
 
-#if defined(AMREX_USE_CUDA)
-using AlgInt = int; // CUB's SpMV does not support long int index
-#elif defined(AMREX_USE_HIP)
+#if defined(AMREX_USE_HIP)
 using AlgInt = rocsparse_int;
 #else
 using AlgInt = Long;

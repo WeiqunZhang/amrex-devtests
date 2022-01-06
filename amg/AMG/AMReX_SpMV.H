@@ -5,8 +5,11 @@
 #include <AMReX_AlgVector.H>
 #include <AMReX_SpMatrix.H>
 
-#if defined(AMREX_USE_CUDA) && defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 11)
-#  include <cub/cub.cuh>
+#if defined(AMREX_USE_CUDA)
+#  include <cusparse.h>
+//#  if defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 11)
+//#    include <cub/cub.cuh>
+//#  endif
 #elif defined(AMREX_USE_DPCPP)
 #  include <oneapi/mkl/spblas.hpp>
 #endif
@@ -31,11 +34,12 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
 
 #if defined(AMREX_USE_GPU)
 
-    y.setVal(0); // xxxxx: Is this necessary?
+    // y.setVal(0);
 
 #if defined(AMREX_USE_CUDA)
 
-#if defined(__CUDACC__) && (__CUDACC_VER_MAJOR__ >= 11)
+#if 0
+
     void* d_temp_storage = nullptr;
     std::size_t temp_storage_bytes = 0;
     cub::DeviceSpmv::CsrMV(d_temp_storage, temp_storage_bytes, (T*)mat, (AlgInt*)row, (AlgInt*)col,
@@ -47,7 +51,45 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
     The_Arena()->free(d_temp_storage);
 
 #else
-    amrex::Abort("SpMV needs CUDA >= 11");
+
+    cusparseHandle_t handle;
+    cusparseCreate(&handle);
+    cusparseSetStream(handle, Gpu::gpuStream());
+
+    cudaDataType data_type = (sizeof(T) == sizeof(double)) ? CUDA_R_64F : CUDA_R_32F;
+    cusparseIndexType_t index_type = (sizeof(AlgInt) == sizeof(int)) ?
+        CUSPARSE_INDEX_32I : CUSPARSE_INDEX_64I;
+
+    cusparseSpMatDescr_t mat_descr;
+    cusparseCreateCsr(&mat_descr, nrows, ncols, nnz, (void*)row, (void*)col, (void*)mat,
+                      index_type, index_type, CUSPARSE_INDEX_BASE_ZERO, data_type);
+
+    cusparseDnVecDescr_t x_descr;
+    cusparseCreateDnVec(&x_descr, ncols, (void*)px, data_type);
+
+    cusparseDnVecDescr_t y_descr;
+    cusparseCreateDnVec(&y_descr, nrows, (void*)py, data_type);
+
+    T alpha = T(1.0);
+    T beta = T(0.0);
+
+    std::size_t buffer_size;
+    cusparseSpMV_bufferSize(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_descr, x_descr,
+                            &beta, y_descr, data_type, CUSPARSE_SPMV_ALG_DEFAULT, &buffer_size);
+
+    void* pbuffer = (void*)The_Arena()->alloc(buffer_size);
+
+    cusparseSpMV(handle, CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, mat_descr, x_descr,
+                 &beta, y_descr, data_type, CUSPARSE_SPMV_ALG_DEFAULT, pbuffer);
+
+    Gpu::streamSynchronize();
+
+    cusparseDestroySpMat(mat_descr);
+    cusparseDestroyDnVec(x_descr);
+    cusparseDestroyDnVec(y_descr);
+    cusparseDestroy(handle);
+    The_Arena()->free(pbuffer);
+
 #endif
 
 #elif defined(AMREX_USE_HIP)

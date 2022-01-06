@@ -93,7 +93,6 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
         });
     }
 
-    phivec.printToFile("phivec");
     rhsvec.printToFile("rhsvec");
 
     A.assemble();
@@ -109,6 +108,7 @@ void solve (Geometry const& geom, MultiFab& phi, MultiFab const& rhs)
     // Copy data back
     phivec.copyTo(phi);
 
+    phivec.printToFile("phivec");
     VisMF::Write(rhs, "rhs");
     VisMF::Write(phi, "phi");
 }
