@@ -35,3 +35,7 @@ INCLUDE_LOCATIONS += ../AMG
 include $(AMREX_HOME)/Src/Base/Make.package
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules
+
+ifeq ($(USE_DPCPP),TRUE)
+  LINKFLAGS += -qmkl
+endif

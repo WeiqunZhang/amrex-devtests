@@ -160,6 +160,7 @@ template <typename T, template<typename> class Allocator>
 void
 SpMatrix<T,Allocator>::printToFile (std::string const& file) const
 {
+#ifndef AMREX_USE_DPCPP
     const Long lrow_begin = m_partition[ParallelDescriptor::MyProc()];
     std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));
     ofs << m_row_begin << " " << m_row_end << " " << m_data.nnz << "\n";
@@ -171,6 +172,7 @@ SpMatrix<T,Allocator>::printToFile (std::string const& file) const
             ofs << i+lrow_begin << " " << col[j] << " " << mat[j] << "\n";
         }
     }
+#endif
 }
 
 }

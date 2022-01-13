@@ -193,8 +193,16 @@ void AlgVector<T,Allocator>::printToFile (std::string const& file) const
 {
     std::ofstream ofs(file+"."+std::to_string(ParallelDescriptor::MyProc()));
     ofs << m_begin << " " << m_end << "\n";
+#ifdef AMREX_USE_DPCPP
+    Gpu::PinnedVector<T> hv(m_data.size());
+    Gpu::dtoh_memcpy_async(hv.data(), m_data.data(), m_data.size()*sizeof(T));
+    Gpu::streamSynchronize();
+    T const* p = hv.data();
+#else
+    T const* p = m_data;
+#endif
     for (Long i = 0, N = m_data.size(); i < N; ++i) {
-        ofs << i+m_begin << " " << m_data[i] << "\n";
+        ofs << i+m_begin << " " << p[i] << "\n";
     }
 }
 
