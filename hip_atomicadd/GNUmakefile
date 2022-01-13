@@ -19,8 +19,6 @@ TINY_PROFILE = FALSE
 
 PRECISION = FLOAT
 
-HIPCC_FLAGS = -munsafe-fp-atomics
-
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
 include ./Make.package
