@@ -24,10 +24,6 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
     AMREX_ASSERT(x.numLocalRows() == y.numLocalRows());
     AMREX_ASSERT(x.numGlobalRows() == y.numGlobalRows());
 
-    Long const nrows = A.numLocalRows();
-    Long const ncols = y.numLocalRows();
-    Long const nnz = A.numLocalNonZero();
-
     T      * AMREX_RESTRICT py = y.data();
     T const* AMREX_RESTRICT px = x.data();
     T const* AMREX_RESTRICT mat = A.data();
@@ -35,6 +31,10 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
     AlgInt const* AMREX_RESTRICT row = A.rowOffset();
 
 #if defined(AMREX_USE_GPU)
+
+    Long const nrows = A.numLocalRows();
+    Long const ncols = y.numLocalRows();
+    Long const nnz = A.numLocalNonZero();
 
     // y.setVal(0);
 
@@ -148,6 +148,7 @@ void SpMV (AlgVector<T>& y, SpMatrix<T> const& A, AlgVector<T> const& x)
 
 #else
 
+    Long const ncols = y.numLocalRows();
     for (Long i = 0; i < ncols; ++i) {
         T r = 0;
 #ifdef AMREX_USE_OMP
