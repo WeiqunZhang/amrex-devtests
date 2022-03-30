@@ -63,8 +63,11 @@ void test(int ncell, int max_grid_size, int nghost,
     
     mf.FillBoundaryAndSync(0, 1, IntVect(nghost), geom.periodicity());
 
-    mf2.OverrideSync(geom.periodicity());
-    mf2.FillBoundary(IntVect(nghost), geom.periodicity());
+    {
+        auto msk = mf2.OwnerMask(geom.periodicity());
+        amrex::OverrideSync(mf2, *msk, geom.periodicity());
+        mf2.FillBoundary(IntVect(nghost), geom.periodicity());
+    }
 
     MultiFab::Subtract(mf2, mf, 0, 0, 1, nghost);
     Real error = mf2.norminf(0, 1, IntVect(nghost));
@@ -100,8 +103,11 @@ void test2 (std::string const& file)
     
     mf.FillBoundaryAndSync(0, 1, IntVect(1), geom.periodicity());
 
-    mf2.OverrideSync(geom.periodicity());
-    mf2.FillBoundary(IntVect(1), geom.periodicity());
+    {
+        auto msk = mf2.OwnerMask(geom.periodicity());
+        amrex::OverrideSync(mf2, *msk, geom.periodicity());
+        mf2.FillBoundary(IntVect(1), geom.periodicity());
+    }
 
     MultiFab::Subtract(mf2, mf, 0, 0, 1, 1);
     Real error = mf2.norminf(0, 1, IntVect(1));
