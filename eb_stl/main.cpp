@@ -10,10 +10,16 @@ void main_main ()
 {
     int n_cell = 128;
     int max_grid_size = 64;
+    std::string plot_file{"plt"};
     {
         ParmParse pp;
         pp.query("n_cell", n_cell);
         pp.query("max_grid_size", max_grid_size);
+        pp.query("plot_file", plot_file);
+
+        ParmParse ppeb2("eb2");
+        std::string geom_type("stl");
+        ppeb2.add("geom_type", geom_type);
     }
 
     Geometry geom(Box(IntVect(0),IntVect(n_cell-1)),
@@ -28,7 +34,7 @@ void main_main ()
 
     auto const& factory = makeEBFabFactory(geom, ba, dm, {1,1,1}, EBSupport::full);
     MultiFab const& vfrc = factory->getVolFrac();
-    amrex::WriteMLMF("plt", {&vfrc}, {geom});
+    amrex::WriteMLMF(plot_file, {&vfrc}, {geom});
 }
 
 int main (int argc, char* argv[])
