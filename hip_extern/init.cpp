@@ -20,5 +20,11 @@ void init ()
     AMREX_GPU_MEMCPY_TO_SYMBOL(d_a, &h_a, sizeof(int));
     AMREX_GPU_MEMCPY_TO_SYMBOL(d_b, h_b.data(), sizeof(int)*4);
 
+    m_a = -3;
+    m_b[0] = -10;
+    m_b[1] = -20;
+    m_b[2] = -30;
+    m_b[3] = -40;
+
     amrex::Gpu::synchronize();
 }
