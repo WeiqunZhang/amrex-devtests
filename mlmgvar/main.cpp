@@ -7,23 +7,23 @@
 
 using namespace amrex;
 
-class Var
+class Any
 {
 public:
-    Var ()
+    Any ()
         : m_ptr(std::make_unique<innards<int> >(0)) // store an int by default
         {}
 
-    ~Var () = default;
+    ~Any () = default;
 
-    Var (Var const& rhs) = delete;  // We use this to store MultiFab etc. So let's delete copy ctor.
-    Var& operator= (Var const& rhs) = delete;
+    Any (Any const& rhs) = delete;  // We use this to store MultiFab etc. So let's delete copy ctor.
+    Any& operator= (Any const& rhs) = delete;
 
-    Var (Var && rhs) = default;
-    Var& operator= (Var && rhs) = default;
+    Any (Any && rhs) = default;
+    Any& operator= (Any && rhs) = default;
 
     template <typename MF>
-    Var (MF && mf)
+    Any (MF && mf)
         : m_ptr(std::make_unique<innards<MF> >(std::forward<MF>(mf)))
         {}
 
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
     {
-        Var var;
+        Any var;
         var = 42;
         amrex::Print() << "Type id: " << var.Type().name() << "\n"
                        << "    Is int? " << (var.Type() == typeid(int)) << "\n"
