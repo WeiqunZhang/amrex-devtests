@@ -81,6 +81,31 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
             tvendor = amrex::second()-t0;
         }
     }
+#elif defined(AMREX_USE_DPCPP)
+    for (int i = 0; i < 2; ++i) {
+        double t0 = amrex::second();
+
+        value_type sumResult = 0;
+        sycl::buffer<value_type> sumBuf { &sumResult, 1 };
+
+        Gpu::Device::streamQueue().submit([&] (sycl::handler& cgh)
+        {
+            auto sumReduction = sycl::reduction(sumBuf, cgh, sycl::plus<>());
+
+            cgh.parallel_for(sycl::range<1>{static_cast<std::size_t>(npts)}, sumReduction,
+            [=] (sycl::id<1> idx, auto& sum)
+            {
+                sum += p[idx];
+            });
+        });
+        sumResult = sumBuf.get_host_access()[0];
+
+        if (i == 0) {
+            amrex::Print() << "    sycl sum            = " << sumResult << std::endl;
+        } else {
+            tvendor = amrex::second()-t0;
+        }
+    }
 #endif
 
     {
@@ -93,18 +118,14 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
         tvec = amrex::second()-t0;
     }
 
-    {
-        *hsum = Reduce::Sum<value_type>(npts,
-                                        [=] AMREX_GPU_DEVICE (int i) -> value_type
-                                        { return p[i]; } );
-        amrex::Print() << "    Reduce::Sum(lambda) = " << *hsum << std::endl;
-    }
+    for (int n = 0; n < 2; ++n)
     {
         double t0 = amrex::second();
         *hsum = Reduce::Sum<value_type>(npts,
                                         [=] AMREX_GPU_DEVICE (int i) -> value_type
                                         { return p[i]; } );
         t1d = amrex::second()-t0;
+        if (n == 0) amrex::Print() << "    Reduce::Sum(lambda) = " << *hsum << std::endl;
     }
 
     amrex::Print() << "    Kernel run time is " << std::scientific << t << " " << tvendor
