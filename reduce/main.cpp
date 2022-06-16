@@ -11,6 +11,9 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
                       Box const& domain)
 {
     double t, tvendor=0., tvec, t1d;
+#if defined(AMREX_USE_ONEDPL)
+    double tonedpl;
+#endif
 
     using value_type = typename MF::value_type;
 
@@ -106,6 +109,20 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
             tvendor = amrex::second()-t0;
         }
     }
+#if defined(AMREX_USE_ONEDPL)
+    for (int i = 0; i < 2; ++i) {
+        double t0 = amrex::second();
+
+        auto policy = dpl::execution::make_device_policy(Gpu::Device::streamQueue());
+        auto sumResult = std::reduce(policy, p, p+npts);
+
+        if (i == 0) {
+            amrex::Print() << "    onedpl sum          = " << sumResult << std::endl;
+        } else {
+            tonedpl = amrex::second()-t0;
+        }
+    }
+#endif
 #endif
 
     {
@@ -130,6 +147,9 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
 
     amrex::Print() << "    Kernel run time is " << std::scientific << t << " " << tvendor
                    << " " << tvec << " " << t1d << ".\n";
+#ifdef AMREX_USE_ONEDPL
+    amrex::Print() << "     Oneapl run time is " << std::scientific << tonedpl << ".\n";
+#endif
 }
 
 int main(int argc, char* argv[])
