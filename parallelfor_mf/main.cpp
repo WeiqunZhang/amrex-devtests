@@ -4,30 +4,32 @@
 
 using namespace amrex;
 
-void test_setval (MultiFab& mf)
+void test_setval (MultiFab& mf1, MultiFab const& mf2)
 {
     double t_multli = 0., t_single = 0.;
     for (int itest = 0; itest < 2; ++itest) {
         double t0 = amrex::second();
 
-        for (MFIter mfi(mf); mfi.isValid(); ++mfi) {
-            auto const& a = mf.array(mfi);
+        for (MFIter mfi(mf1); mfi.isValid(); ++mfi) {
+            auto const& a = mf1.array(mfi);
+            auto const& b = mf2.array(mfi);
             amrex::ParallelFor(mfi.validbox(), [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                a(i,j,k) = 1.0;
+                a(i,j,k) = b(i,j,k);
             });
         }
 
         double t1 = amrex::second();
 
         {
-            auto ma = mf.arrays();
-            amrex::ParallelFor(mf,
+            auto const& ma1 = mf1.arrays();
+            auto const& ma2 = mf2.arrays();
+            amrex::ParallelFor(mf1,
             [=] AMREX_GPU_DEVICE (int box_no, int i, int j, int k)
             {
-                ma[box_no](i,j,k) = 1.0;
+                ma1[box_no](i,j,k) = ma2[box_no](i,j,k);
             });
-            Gpu::synchronize();
+            Gpu::streamSynchronize();
         }
 
         double t2 = amrex::second();
@@ -36,7 +38,7 @@ void test_setval (MultiFab& mf)
         t_single = t2-t1;
     }
 
-    amrex::Print() << "Run time with " << mf.size() << " kernels is "
+    amrex::Print() << "Run time with " << mf1.size() << " kernels is "
                    << std::scientific << t_multli << "\n"
                    << "Run time with fused kernel launch is "
                    << std::scientific << t_single << std::endl;;
@@ -53,7 +55,7 @@ int main(int argc, char* argv[])
         BL_PROFILE("main()");
 
         int ncell = 256;
-        int max_grid_size = 64;
+        int max_grid_size = 32;
         std::vector<int> box_sizes;
         std::vector<int> nboxes;
         {
@@ -80,9 +82,11 @@ int main(int argc, char* argv[])
             ba = BoxArray(std::move(bl));
         }
         DistributionMapping dm{ba};
-        MultiFab mf(ba, dm, 1, 0);
+        MultiFab mf1(ba, dm, 1, 0);
+        MultiFab mf2(ba, dm, 1, 0);
+        mf2.setVal(3.);
 
-        test_setval(mf);
+        test_setval(mf1,mf2);
     }
     amrex::Finalize();
 }
