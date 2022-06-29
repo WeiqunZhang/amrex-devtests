@@ -77,7 +77,14 @@ MyTest::solvePoisson ()
         }
 #endif
 
-        mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
+        Vector<Any> any_sol(nlevels);
+        Vector<Any> any_rhs(nlevels);
+        for (int ilev = 0; ilev < nlevels; ++ilev) {
+            any_sol[ilev] = MultiFab(solution[ilev], amrex::make_alias, 0, 1);
+            any_rhs[ilev] = MultiFab(rhs[ilev], amrex::make_alias, 0, 1);
+        }
+        mlmg.solve(any_sol, any_rhs, tol_rel, tol_abs);
+//        mlmg.solve(GetVecOfPtrs(solution), GetVecOfConstPtrs(rhs), tol_rel, tol_abs);
     }
     else
     {
