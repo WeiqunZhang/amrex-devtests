@@ -43,12 +43,12 @@ void test_reduce_sum (int npts)
     ttmp = 1.e6;
     for (int n = 0; n < ntests; ++n) {
         double t0 = amrex::second();
+        auto hsum = (T*)The_Pinned_Arena()->alloc(sizeof(T));
         void     *d_temp_storage = nullptr;
         size_t   temp_storage_bytes = 0;
         cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, hsum, npts);
         // Allocate temporary storage
         d_temp_storage = (void*)The_Arena()->alloc(temp_storage_bytes);
-        auto hsum = (T*)The_Pinned_Arena()->alloc(sizeof(T));
         // Run sum-reduction
         cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, hsum, npts);
         Gpu::streamSynchronize();
@@ -68,12 +68,12 @@ void test_reduce_sum (int npts)
     ttmp = 1.e6;
     for (int n = 0; n < ntests; ++n) {
         double t0 = amrex::second();
+        auto hsum = (T*)The_Pinned_Arena()->alloc(sizeof(T));
         void * d_temp_storage = nullptr;
         size_t temporary_storage_bytes = 0;
         rocprim::reduce(d_temp_storage, temporary_storage_bytes,
                         p, hsum, npts, rocprim::plus<T>());
         d_temp_storage = The_Arena()->alloc(temporary_storage_bytes);
-        auto hsum = (T*)The_Pinned_Arena()->alloc(sizeof(T));
         rocprim::reduce(d_temp_storage, temporary_storage_bytes,
                         p, hsum, npts, rocprim::plus<T>());
         Gpu::streamSynchronize();
@@ -120,7 +120,7 @@ void test_reduce_sum (int npts)
     twall.push_back(ttmp);
 
     ttmp = 1.e6;
-    for (int n = 0; n < 2; ++n) {
+    for (int n = 0; n < ntests; ++n) {
         double t0 = amrex::second();
 
         auto& gdev = amrex::Gpu::Device::syclDevice();
