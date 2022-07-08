@@ -10,12 +10,11 @@ template <typename MF>
 void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
                       Box const& domain)
 {
-    double t, tvendor=0., tvec, t1d;
-#if defined(AMREX_USE_ONEDPL)
-    double tonedpl;
-#endif
-
     using value_type = typename MF::value_type;
+
+    Vector<double> twall;
+    Vector<value_type> result;
+    Vector<std::string> desc;
 
     MF mf(ba,dm,1,0);
     for (MFIter mfi(mf); mfi.isValid(); ++mfi) {
@@ -28,25 +27,29 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
         });
     }
 
+    for (int n = 0; n < 2; ++n)
     {
-        BL_PROFILE("reduce-warmup");
-        auto r = mf.sum(0);
-        if (std::is_same<MF,MultiFab>::value) {
-            amrex::Print() << "    MultiFab::sum       = " << r << std::endl;
-        } else {
-            amrex::Print() << "    iMultiFab::sum      = " << r << std::endl;
-        }
-    }
-    {
-        BL_PROFILE("reduce-mf");
         double t0 = amrex::second();
-        mf.sum(0);
-        t = amrex::second()-t0;
+        auto r = mf.sum(0);
+        double t1 = amrex::second();
+        if (n == 0) {
+            result.push_back(r);
+            if (std::is_same<MF,MultiFab>::value) {
+                desc.push_back("    MultiFab::sum       = ");
+            } else {
+                desc.push_back("    iMultiFab::sum      = ");
+            }
+        } else {
+            twall.push_back(t1-t0);
+        }
     }
 
     auto p = mf[0].dataPtr();
-    auto hsum = (value_type*)The_Pinned_Arena()->alloc(sizeof(value_type));
     Long npts = domain.numPts();
+
+#if defined(AMREX_USE_CUB) || defined(AMREX_USE_HIP)
+    auto hsum = (value_type*)The_Pinned_Arena()->alloc(sizeof(value_type));
+#endif
 
 #if defined(AMREX_USE_CUB)
     for (int i = 0; i < 2; ++i) {
@@ -60,10 +63,12 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
         cub::DeviceReduce::Sum(d_temp_storage, temp_storage_bytes, p, hsum, npts);
         Gpu::synchronize();
         The_Arena()->free(d_temp_storage);
+        double t1 = amrex::second();
         if (i == 0) {
-            amrex::Print() << "    cub sum             = " << *hsum << std::endl;
+            result.push_back(*hsum);
+            desc.push_back("    cub sum             = ");
         } else {
-            tvendor = amrex::second()-t0;
+            twall.push_back(t1-t0);
         }
     }
 #elif defined(AMREX_USE_HIP)
@@ -78,10 +83,12 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
                         p, hsum, npts, rocprim::plus<value_type>());
         Gpu::synchronize();
         The_Arena()->free(d_temp_storage);
+        double t1 = amrex::second();
         if (i == 0) {
-            amrex::Print() << "    hip sum             = " << *hsum << std::endl;
+            result.push_back(*hsum);
+            desc.push_back("    hip sum             = ");
         } else {
-            tvendor = amrex::second()-t0;
+            twall.push_back(t1-t0);
         }
     }
 #elif defined(AMREX_USE_DPCPP)
@@ -103,10 +110,13 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
         });
         sumResult = sumBuf.get_host_access()[0];
 
+        double t1 = amrex::second();
+
         if (i == 0) {
-            amrex::Print() << "    sycl sum            = " << sumResult << std::endl;
+            result.push_back(sumResult);
+            desc.push_back("    sycl sum            = ");
         } else {
-            tvendor = amrex::second()-t0;
+            twall.push_back(t1-t0);
         }
     }
 #if defined(AMREX_USE_ONEDPL)
@@ -116,48 +126,55 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
         auto policy = dpl::execution::make_device_policy(Gpu::Device::streamQueue());
         auto sumResult = std::reduce(policy, p, p+npts);
 
+        double t1 = amrex::second();
+
         if (i == 0) {
-            amrex::Print() << "    onedpl sum          = " << sumResult << std::endl;
+            result.push_back(sumResult);
+            desc.push_back("    onedpl sum          = ");
         } else {
-            tonedpl = amrex::second()-t0;
+            twall.push_back(t1-t0);
         }
     }
 #endif
 #endif
 
-    {
-        *hsum = Reduce::Sum(npts, p);
-        amrex::Print() << "    Reduce::Sum(ptr)    = " << *hsum << std::endl;
-    }
+    for (int n = 0; n < 2; ++n)
     {
         double t0 = amrex::second();
-        *hsum = Reduce::Sum(npts, p);
-        tvec = amrex::second()-t0;
+        auto r = Reduce::Sum(npts, p);
+        double t1 = amrex::second();
+        if (n == 0) {
+            result.push_back(r);
+            desc.push_back("    Reduce::Sum(ptr)    = ");
+        } else {
+            twall.push_back(t1-t0);
+        };
     }
 
     for (int n = 0; n < 2; ++n)
     {
         double t0 = amrex::second();
-        *hsum = Reduce::Sum<value_type>(npts,
-                                        [=] AMREX_GPU_DEVICE (int i) -> value_type
-                                        { return p[i]; } );
-        t1d = amrex::second()-t0;
-        if (n == 0) amrex::Print() << "    Reduce::Sum(lambda) = " << *hsum << std::endl;
+        auto r = Reduce::Sum<value_type>(npts,
+                                         [=] AMREX_GPU_DEVICE (int i) -> value_type
+                                             { return p[i]; } );
+        double t1 = amrex::second();
+        if (n == 0) {
+            result.push_back(r);
+            desc.push_back("    Reduce::Sum(lambda) = ");
+        } else {
+            twall.push_back(t1-t0);
+        }
     }
 
-    amrex::Print() << "    Kernel run time is " << std::scientific << t << " " << tvendor
-                   << " " << tvec << " " << t1d << ".\n";
-#ifdef AMREX_USE_ONEDPL
-    amrex::Print() << "     Oneapl run time is " << std::scientific << tonedpl << ".\n";
-#endif
+    for (int i = 0; i < desc.size(); ++i) {
+        amrex::Print() << desc[i] << result[i] << ", run time is " << twall[i] << ".\n";
+    }
 }
 
 int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
     {
-        BL_PROFILE("main()");
-
         int ncell = 256;
         int max_grid_size;
         {
