@@ -229,6 +229,165 @@ void interpolation (Box const& box, Array4<Real> const& fine, Array4<Real const>
     });
 }
 
+#if defined(AMREX_USE_GPU)
+
+template <int NS, typename FGS, typename FRES>
+void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
+                      Array4<Real> const* res, Array4<Real> const* cor,
+                      Array4<Real> const* rescor, int nlevs,
+                      FGS&& fgs, FRES&& fres)
+{
+
+#if defined(AMREX_USE_DPCPP)
+    amrex::Abort("DPCPP todo");
+#else
+    static_assert(n_cell_single*n_cell_single <= 1024, "n_cell_single is too big");
+    amrex::launch_global<1024><<<1, 1024, 0, Gpu::gpuStream()>>>(
+    [=] AMREX_GPU_DEVICE () noexcept
+    {
+        Real facx = Real(1.)/(dx0*dx0);
+        Real facy = Real(1.)/(dy0*dy0);
+        int lenx = cor[0].end.x - cor[0].begin.x;
+        int leny = cor[0].end.y - cor[0].begin.y;
+        int ncells = lenx*leny;
+        const int icell = threadIdx.x;
+
+        for (int ilev = 0; ilev < nlevs-1; ++ilev) {
+            if (icell < ncells) {
+                cor[ilev].p[icell] = Real(0.);
+                cor[ilev].p[icell+ncells] = Real(0.);
+            }
+            __syncthreads();
+
+            for (int is = 0; is < 4; ++is) {
+                if (icell < ncells) {
+                    int j = icell /   lenx;
+                    int i = icell - j*lenx;
+                    j += cor[ilev].begin.y;
+                    i += cor[ilev].begin.x;
+                    if ((i+j+is)%2 == 0) {
+                        fgs(i, j,
+                            cor[ilev].begin.x, cor[ilev].begin.y,
+                            cor[ilev].end.x-1, cor[ilev].end.y-1,
+                            cor[ilev],
+                            res[ilev](i,j,0,0),
+                            res[ilev](i,j,0,1),
+                            acf[ilev](i,j,0), facx, facy);
+                    }
+                }
+                __syncthreads();
+            }
+
+            if (icell < ncells) {
+                int j = icell /   lenx;
+                int i = icell - j*lenx;
+                j += cor[ilev].begin.y;
+                i += cor[ilev].begin.x;
+                fres(i, j,
+                     rescor[ilev](i,j,0,0),
+                     rescor[ilev](i,j,0,1),
+                     cor[ilev].begin.x, cor[ilev].begin.y,
+                     cor[ilev].end.x-1, cor[ilev].end.y-1,
+                     cor[ilev],
+                     res[ilev](i,j,0,0),
+                     res[ilev](i,j,0,1),
+                     acf[ilev](i,j,0), facx, facy);
+            }
+            __syncthreads();
+
+            lenx = cor[ilev+1].end.x - cor[ilev+1].begin.x;
+            leny = cor[ilev+1].end.y - cor[ilev+1].begin.y;
+            ncells = lenx*leny;
+            if (icell < ncells) {
+                int j = icell /   lenx;
+                int i = icell - j*lenx;
+                j += cor[ilev+1].begin.y;
+                i += cor[ilev+1].begin.x;
+                for (int n = 0; n < 2; ++n) {
+                    res[ilev+1](i,j,0,n) = Real(0.25)*(rescor[ilev](2*i  ,2*j  ,0,n) +
+                                                       rescor[ilev](2*i+1,2*j  ,0,n) +
+                                                       rescor[ilev](2*i  ,2*j+1,0,n) +
+                                                       rescor[ilev](2*i+1,2*j+1,0,n));
+                }
+            }
+            __syncthreads();
+
+            facx *= Real(0.25);
+            facy *= Real(0.25);
+        }
+
+        // bottom
+        {
+            const int ilev = nlevs-1;
+            if (icell < ncells) {
+                cor[ilev].p[icell] = Real(0.);
+                cor[ilev].p[icell+ncells] = Real(0.);
+            }
+            __syncthreads();
+
+            for (int is = 0; is < NS; ++is) {
+                if (icell < ncells) {
+                    int j = icell /   lenx;
+                    int i = icell - j*lenx;
+                    j += cor[ilev].begin.y;
+                    i += cor[ilev].begin.x;
+                    if ((i+j+is)%2 == 0) {
+                        fgs(i, j,
+                            cor[ilev].begin.x, cor[ilev].begin.y,
+                            cor[ilev].end.x-1, cor[ilev].end.y-1,
+                            cor[ilev],
+                            res[ilev](i,j,0,0),
+                            res[ilev](i,j,0,1),
+                            acf[ilev](i,j,0), facx, facy);
+                    }
+                }
+                __syncthreads();
+            }
+        }
+
+        for (int ilev = nlevs-2; ilev >=0; --ilev) {
+            lenx = cor[ilev].end.x - cor[ilev].begin.x;
+            leny = cor[ilev].end.y - cor[ilev].begin.y;
+            ncells = lenx*leny;
+            facx *= Real(4.);
+            facy *= Real(4.);
+
+            if (icell < ncells) {
+                int j = icell /   lenx;
+                int i = icell - j*lenx;
+                j += cor[ilev].begin.y;
+                i += cor[ilev].begin.x;
+                int ic = amrex::coarsen(i,2);
+                int jc = amrex::coarsen(j,2);
+                cor[ilev](i,j,0,0) += cor[ilev+1](ic,jc,0,0);
+                cor[ilev](i,j,0,1) += cor[ilev+1](ic,jc,0,1);
+            }
+
+            for (int is = 0; is < 4; ++is) {
+                __syncthreads();
+                if (icell < ncells) {
+                    int j = icell /   lenx;
+                    int i = icell - j*lenx;
+                    j += cor[ilev].begin.y;
+                    i += cor[ilev].begin.x;
+                    if ((i+j+is)%2 == 0) {
+                        fgs(i, j,
+                            cor[ilev].begin.x, cor[ilev].begin.y,
+                            cor[ilev].end.x-1, cor[ilev].end.y-1,
+                            cor[ilev],
+                            res[ilev](i,j,0,0),
+                            res[ilev](i,j,0,1),
+                            acf[ilev](i,j,0), facx, facy);
+                    }
+                }
+            }
+        }
+    });
+#endif
+}
+
+#endif
+
 } // namespace {}
 
 MultiGrid::MultiGrid (Geometry const& geom)
@@ -515,148 +674,45 @@ MultiGrid::bottomsolve ()
     Array4<amrex::Real> const* res = m_res_a;
     Array4<amrex::Real> const* cor = m_cor_a;
     Array4<amrex::Real> const* rescor = m_rescor_a;
+    Real acf_real = m_acf_real;
     int nlevs = m_num_single_block_levels;
-#if defined(AMREX_USE_DPCPP)
-    amrex::Abort("DPCPP todo");
-#else
-    static_assert(n_cell_single*n_cell_single <= 1024, "n_cell_single is too big");
-    amrex::launch_global<1024><<<1, 1024, 0, Gpu::gpuStream()>>>(
-    [=] AMREX_GPU_DEVICE () noexcept
-    {
-        Real facx = Real(1.)/(dx0*dx0);
-        Real facy = Real(1.)/(dy0*dy0);
-        int lenx = cor[0].end.x - cor[0].begin.x;
-        int leny = cor[0].end.y - cor[0].begin.y;
-        int ncells = lenx*leny;
-        const int icell = threadIdx.x;
 
-        for (int ilev = 0; ilev < nlevs-1; ++ilev) {
-            if (icell < ncells) {
-                cor[ilev].p[icell] = Real(0.);
-                cor[ilev].p[icell+ncells] = Real(0.);
-            }
-            __syncthreads();
-
-            for (int is = 0; is < 4; ++is) {
-                if (icell < ncells) {
-                    int j = icell /   lenx;
-                    int i = icell - j*lenx;
-                    j += cor[ilev].begin.y;
-                    i += cor[ilev].begin.x;
-                    if ((i+j+is)%2 == 0) {
-                        for (int n = 0; n < 2; ++n) {
-                            gs(i, j, n,
-                               cor[ilev].begin.x, cor[ilev].begin.y,
-                               cor[ilev].end.x-1, cor[ilev].end.y-1,
-                               cor[ilev], res[ilev](i,j,0,n), acf[ilev](i,j,0), facx, facy);
-                        }
-                    }
-                }
-                __syncthreads();
-            }
-
-            if (icell < ncells) {
-                int j = icell /   lenx;
-                int i = icell - j*lenx;
-                j += cor[ilev].begin.y;
-                i += cor[ilev].begin.x;
-                for (int n = 0; n < 2; ++n) {
-                    rescor[ilev](i,j,0,n) =
-                        residual(i, j, n,
-                                 cor[ilev].begin.x, cor[ilev].begin.y,
-                                 cor[ilev].end.x-1, cor[ilev].end.y-1,
-                                 cor[ilev], res[ilev](i,j,0,n), acf[ilev](i,j,0), facx, facy);
-                }
-            }
-            __syncthreads();
-
-            lenx = cor[ilev+1].end.x - cor[ilev+1].begin.x;
-            leny = cor[ilev+1].end.y - cor[ilev+1].begin.y;
-            ncells = lenx*leny;
-            if (icell < ncells) {
-                int j = icell /   lenx;
-                int i = icell - j*lenx;
-                j += cor[ilev+1].begin.y;
-                i += cor[ilev+1].begin.x;
-                for (int n = 0; n < 2; ++n) {
-                    res[ilev+1](i,j,0,n) = Real(0.25)*(rescor[ilev](2*i  ,2*j  ,0,n) +
-                                                       rescor[ilev](2*i+1,2*j  ,0,n) +
-                                                       rescor[ilev](2*i  ,2*j+1,0,n) +
-                                                       rescor[ilev](2*i+1,2*j+1,0,n));
-                }
-            }
-            __syncthreads();
-
-            facx *= Real(0.25);
-            facy *= Real(0.25);
-        }
-
-        // bottom
-        {
-            const int ilev = nlevs-1;
-            if (icell < ncells) {
-                cor[ilev].p[icell] = Real(0.);
-                cor[ilev].p[icell+ncells] = Real(0.);
-            }
-            __syncthreads();
-
-            for (int is = 0; is < nsweeps; ++is) {
-                if (icell < ncells) {
-                    int j = icell /   lenx;
-                    int i = icell - j*lenx;
-                    j += cor[ilev].begin.y;
-                    i += cor[ilev].begin.x;
-                    if ((i+j+is)%2 == 0) {
-                        for (int n = 0; n < 2; ++n) {
-                            gs(i, j, n,
-                               cor[ilev].begin.x, cor[ilev].begin.y,
-                               cor[ilev].end.x-1, cor[ilev].end.y-1,
-                               cor[ilev], res[ilev](i,j,0,n), acf[ilev](i,j,0), facx, facy);
-                        }
-                    }
-                }
-                __syncthreads();
-            }
-        }
-
-        for (int ilev = nlevs-2; ilev >=0; --ilev) {
-            lenx = cor[ilev].end.x - cor[ilev].begin.x;
-            leny = cor[ilev].end.y - cor[ilev].begin.y;
-            ncells = lenx*leny;
-            facx *= Real(4.);
-            facy *= Real(4.);
-
-            if (icell < ncells) {
-                int j = icell /   lenx;
-                int i = icell - j*lenx;
-                j += cor[ilev].begin.y;
-                i += cor[ilev].begin.x;
-                int ic = amrex::coarsen(i,2);
-                int jc = amrex::coarsen(j,2);
-                cor[ilev](i,j,0,0) += cor[ilev+1](ic,jc,0,0);
-                cor[ilev](i,j,0,1) += cor[ilev+1](ic,jc,0,1);
-            }
-
-            for (int is = 0; is < 4; ++is) {
-                __syncthreads();
-                if (icell < ncells) {
-                    int j = icell /   lenx;
-                    int i = icell - j*lenx;
-                    j += cor[ilev].begin.y;
-                    i += cor[ilev].begin.x;
-                    if ((i+j+is)%2 == 0) {
-                        for (int n = 0; n < 2; ++n) {
-                            gs(i, j, n,
-                               cor[ilev].begin.x, cor[ilev].begin.y,
-                               cor[ilev].end.x-1, cor[ilev].end.y-1,
-                               cor[ilev], res[ilev](i,j,0,n), acf[ilev](i,j,0), facx, facy);
-                        }
-                    }
-                }
-            }
-        }
-    });
-#endif
+    if (m_system_type == 1) {
+        bottomsolve_gpu<nsweeps>(dx0, dy0, acf, res, cor, rescor, nlevs,
+            [=] AMREX_GPU_DEVICE (int i, int j, int ilo, int jlo, int ihi, int jhi,
+                                  Array4<Real> const& phi, Real rhs0, Real rhs1,
+                                  Real acf, Real facx, Real facy)
+            {
+                gs1(i, j, 0, ilo, jlo, ihi, jhi, phi, rhs0, acf, facx, facy);
+                gs1(i, j, 1, ilo, jlo, ihi, jhi, phi, rhs1, acf, facx, facy);
+            },
+            [=] AMREX_GPU_DEVICE (int i, int j, Real& res0, Real& res1,
+                                  int ilo, int jlo, int ihi, int jhi,
+                                  Array4<Real> const& phi, Real rhs0, Real rhs1,
+                                  Real acf, Real facx, Real facy)
+            {
+                res0 = residual1(i, j, 0, ilo, jlo, ihi, jhi, phi, rhs0, acf, facx, facy);
+                res1 = residual1(i, j, 1, ilo, jlo, ihi, jhi, phi, rhs1, acf, facx, facy);
+            });
+    } else {
+        bottomsolve_gpu<nsweeps>(dx0, dy0, acf, res, cor, rescor, nlevs,
+            [=] AMREX_GPU_DEVICE (int i, int j, int ilo, int jlo, int ihi, int jhi,
+                                  Array4<Real> const& phi, Real rhs0, Real rhs1,
+                                  Real acf, Real facx, Real facy)
+            {
+                gs2(i, j, ilo, jlo, ihi, jhi, phi, rhs0, rhs1, acf_real, acf, facx, facy);
+            },
+            [=] AMREX_GPU_DEVICE (int i, int j, Real& res0, Real& res1,
+                                  int ilo, int jlo, int ihi, int jhi,
+                                  Array4<Real> const& phi, Real rhs_r, Real rhs_i,
+                                  Real acf, Real facx, Real facy) -> Real
+            {
+                res0 = residual2r(i, j, ilo, jlo, ihi, jhi, phi, rhs_r, acf_real, acf,
+                                  facx, facy);
+                res1 = residual2i(i, j, ilo, jlo, ihi, jhi, phi, rhs_i, acf_real, acf,
+                                  facx, facy);
+            });
+    }
 #else
     const int ilev = m_single_block_level_begin;
     m_cor[ilev].setVal(Real(0.));
