@@ -231,33 +231,44 @@ void interpolation (Box const& box, Array4<Real> const& fine, Array4<Real const>
 
 #if defined(AMREX_USE_GPU)
 
+#if defined(AMREX_USE_DPCPP)
+#define HPMG_SYNCTHREADS item.barrier(sycl::access::fence_space::global_and_local)
+#else
+#define HPMG_SYNCTHREADS __syncthreads()
+#endif
+
 template <int NS, typename FGS, typename FRES>
 void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
                       Array4<Real> const* res, Array4<Real> const* cor,
                       Array4<Real> const* rescor, int nlevs,
                       FGS&& fgs, FRES&& fres)
 {
-
-#if defined(AMREX_USE_DPCPP)
-    amrex::Abort("DPCPP todo");
-#else
     static_assert(n_cell_single*n_cell_single <= 1024, "n_cell_single is too big");
+#if defined(AMREX_USE_DPCPP)
+    amrex::launch(1, 1024, Gpu::gpuStream(),
+    [=] (sycl::nd_item<1> const& item) noexcept
+#else
     amrex::launch_global<1024><<<1, 1024, 0, Gpu::gpuStream()>>>(
     [=] AMREX_GPU_DEVICE () noexcept
+#endif
     {
         Real facx = Real(1.)/(dx0*dx0);
         Real facy = Real(1.)/(dy0*dy0);
         int lenx = cor[0].end.x - cor[0].begin.x;
         int leny = cor[0].end.y - cor[0].begin.y;
         int ncells = lenx*leny;
+#if defined(AMREX_USE_DPCPP)
+        const int icell = item.get_local_linear_id();
+#else
         const int icell = threadIdx.x;
+#endif
 
         for (int ilev = 0; ilev < nlevs-1; ++ilev) {
             if (icell < ncells) {
                 cor[ilev].p[icell] = Real(0.);
                 cor[ilev].p[icell+ncells] = Real(0.);
             }
-            __syncthreads();
+            HPMG_SYNCTHREADS;
 
             for (int is = 0; is < 4; ++is) {
                 if (icell < ncells) {
@@ -275,7 +286,7 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
                             acf[ilev](i,j,0), facx, facy);
                     }
                 }
-                __syncthreads();
+                HPMG_SYNCTHREADS;
             }
 
             if (icell < ncells) {
@@ -293,7 +304,7 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
                      res[ilev](i,j,0,1),
                      acf[ilev](i,j,0), facx, facy);
             }
-            __syncthreads();
+            HPMG_SYNCTHREADS;
 
             lenx = cor[ilev+1].end.x - cor[ilev+1].begin.x;
             leny = cor[ilev+1].end.y - cor[ilev+1].begin.y;
@@ -310,7 +321,7 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
                                                        rescor[ilev](2*i+1,2*j+1,0,n));
                 }
             }
-            __syncthreads();
+            HPMG_SYNCTHREADS;
 
             facx *= Real(0.25);
             facy *= Real(0.25);
@@ -323,7 +334,7 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
                 cor[ilev].p[icell] = Real(0.);
                 cor[ilev].p[icell+ncells] = Real(0.);
             }
-            __syncthreads();
+            HPMG_SYNCTHREADS;
 
             for (int is = 0; is < NS; ++is) {
                 if (icell < ncells) {
@@ -341,7 +352,7 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
                             acf[ilev](i,j,0), facx, facy);
                     }
                 }
-                __syncthreads();
+                HPMG_SYNCTHREADS;
             }
         }
 
@@ -364,7 +375,7 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
             }
 
             for (int is = 0; is < 4; ++is) {
-                __syncthreads();
+                HPMG_SYNCTHREADS;
                 if (icell < ncells) {
                     int j = icell /   lenx;
                     int i = icell - j*lenx;
@@ -383,10 +394,9 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
             }
         }
     });
-#endif
 }
 
-#endif
+#endif // AMREX_USE_GPU
 
 } // namespace {}
 
@@ -705,7 +715,7 @@ MultiGrid::bottomsolve ()
             [=] AMREX_GPU_DEVICE (int i, int j, Real& res0, Real& res1,
                                   int ilo, int jlo, int ihi, int jhi,
                                   Array4<Real> const& phi, Real rhs_r, Real rhs_i,
-                                  Real acf, Real facx, Real facy) -> Real
+                                  Real acf, Real facx, Real facy)
             {
                 res0 = residual2r(i, j, ilo, jlo, ihi, jhi, phi, rhs_r, acf_real, acf,
                                   facx, facy);
@@ -753,22 +763,29 @@ MultiGrid::average_down_acoef (FArrayBox const& a_acf)
     }
 
 #if defined(AMREX_USE_GPU)
-#if defined (AMREX_USE_DPCPP)
-    amrex::Abort("DPCPP todo");
-#endif
-
     if (m_num_single_block_levels > 1) {
         Array4<Real> const* acf = m_acf_a;
         int nlevels = m_num_single_block_levels;
 
+#if defined(AMREX_USE_DPCPP)
+        amrex::launch(1, 1024, Gpu::gpuStream(),
+        [=] (sycl::nd_item<1> const& item) noexcept
+#else
         amrex::launch_global<1024><<<1, 1024, 0, Gpu::gpuStream()>>>(
         [=] AMREX_GPU_DEVICE () noexcept
+#endif
         {
             for (int ilev = 1; ilev < nlevels; ++ilev) {
                 const int lenx = acf[ilev].end.x - acf[ilev].begin.x;
                 const int leny = acf[ilev].end.y - acf[ilev].begin.y;
                 const int ncells = lenx*leny;
+#if defined(AMREX_USE_DPCPP)
+                for (int icell = item.get_local_range(0)*item.get_group_linear_id()
+                         + item.get_local_linear_id(),
+                         stride = item.get_local_range(0)*item.get_group_range(0);
+#else
                 for (int icell = blockDim.x*blockIdx.x+threadIdx.x, stride = blockDim.x*gridDim.x;
+#endif
                      icell < ncells; icell += stride) {
                     int j = icell /   lenx;
                     int i = icell - j*lenx;
@@ -779,7 +796,7 @@ MultiGrid::average_down_acoef (FArrayBox const& a_acf)
                                                    acf[ilev-1](2*i  ,2*j+1,0) +
                                                    acf[ilev-1](2*i+1,2*j+1,0));
                 }
-                __syncthreads();
+                HPMG_SYNCTHREADS;
             }
         });
     }
