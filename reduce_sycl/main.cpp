@@ -203,6 +203,180 @@ void test_reduce_sum (int npts)
     twall.push_back(ttmp);
 
 #endif
+
+    ttmp = 1.e6;
+    for (int n = 0; n < ntests; ++n) {
+        double t0 = amrex::second();
+
+        // amrex reduction is reproduced here.
+        // It seems that using amrex::The_Arena helps a lot.
+
+#if 0
+#define MY_ALLOC_DEVICE(x) sycl::malloc_device(x, dev, ctx)
+#define MY_ALLOC_HOST(x)   sycl::malloc_host(x, ctx)
+#define MY_FREE_DEVICE(x)  sycl::free(x, ctx);
+#define MY_FREE_HOST(x)    sycl::free(x, ctx);
+#else
+#define MY_ALLOC_DEVICE(x) amrex::The_Arena()->alloc(x)
+#define MY_ALLOC_HOST(x)   amrex::The_Pinned_Arena()->alloc(x)
+#define MY_FREE_DEVICE(x)  amrex::The_Arena()->free(x)
+#define MY_FREE_HOST(x)    amrex::The_Pinned_Arena()->free(x)
+#endif
+
+        auto& dev = amrex::Gpu::Device::syclDevice();
+        auto& ctx = amrex::Gpu::Device::syclContext();
+        auto& q   = amrex::Gpu::Device::streamQueue(); // AMReX uses orderd queue.
+
+        constexpr int sub_group_size = 16;
+        constexpr int group_size = 256;
+        constexpr int nitems_per_thread = 4;  // Each thread works on 4 items
+
+        int ngroups = (npts+nitems_per_thread*group_size-1) / (nitems_per_thread*group_size);
+        int nthreads_total = ngroups * group_size;
+
+        auto group_result = (T*)MY_ALLOC_DEVICE(sizeof(T)*ngroups);
+        auto final_result = (T*)MY_ALLOC_HOST(sizeof(T));
+
+        q.submit([&] (sycl::handler& h)
+        {
+            sycl::accessor<T, 1, sycl::access::mode::read_write, sycl::access::target::local>
+                shared_data(sycl::range<1>(sub_group_size), h);
+            h.parallel_for(sycl::nd_range<1>(sycl::range<1>(nthreads_total),
+                                             sycl::range<1>(group_size)),
+            [=] (sycl::nd_item<1> item) [[intel::reqd_sub_group_size(sub_group_size)]]
+            {
+                // thread local reduction
+                T x = 0;
+                for (int i = item.get_global_linear_id(); i < npts; i += nthreads_total) {
+                    x += p[i];
+                }
+                // For thread 0, r = p[0] + p[nthreads_total  ] + p[2*nthreads_total  ] + ...
+                // For thread 1, r = p[1] + p[nthreads_total+1] + p[2*nthreads_total+1] + ...
+
+                // sub-group reduction
+                auto const& sg = item.get_sub_group();
+                for (int offset = sub_group_size/2; offset > 0; offset /= 2) {
+                    T y = sg.shuffle_down(x, offset);
+                    x += y;
+                }
+
+                // Only the first thread in a sub-group has the full result
+                // because of shuffle_down.  It will store the result in
+                // shared local memory.
+                T* shared = shared_data.get_pointer();
+                if (sg.get_local_id()[0] == 0) {
+                    shared[sg.get_group_id()[0]] = x;
+                }
+                item.barrier(sycl::access::fence_space::local_space);
+
+                // The sub-group results are in shared local memory now.
+                // The first sub-group in a group will reduce that further
+                // for the whole group.
+                x = (item.get_local_linear_id() < sg.get_group_range()[0])
+                    ? shared[sg.get_local_id()[0]] : T(0);
+                if (sg.get_group_id() == 0) {
+                    for (int offset = sub_group_size/2; offset > 0; offset /= 2) {
+                        T y = sg.shuffle_down(x, offset);
+                        x += y;
+                    }
+                }
+
+                // Now the first thread in a group has the group reduction
+                // result.  It will store the result in global memory.
+                if (item.get_local_linear_id() == 0) {
+                    group_result[item.get_group_linear_id()] = x;
+                }
+            });
+        });
+
+        // We need to launch a second kernel to reduce the group result.
+        // This kernel has only one group.
+
+        // In CUDA and HIP, we store the final result in pinned memory.
+        // This avoids memcpy or managed momory. But due to a bug, we have
+        // to store the result in device memory and then memcpy it back to
+        // the host. (Not sure whether or not the bug has been fixed.)
+#ifndef AMREX_NO_DPCPP_REDUCE_WORKAROUND
+        T* presult = (T*)MY_ALLOC_DEVICE(sizeof(T));
+#else
+        T* presult = final_result;
+#endif
+
+        q.submit([&] (sycl::handler& h)
+        {
+            sycl::accessor<T, 1, sycl::access::mode::read_write, sycl::access::target::local>
+                shared_data(sycl::range<1>(sub_group_size), h);
+            h.parallel_for(sycl::nd_range<1>(sycl::range<1>(group_size),
+                                             sycl::range<1>(group_size)),
+            [=] (sycl::nd_item<1> item) [[intel::reqd_sub_group_size(sub_group_size)]]
+            {
+                // thread local reduction
+                T x = 0;
+                for (int i = item.get_global_linear_id(); i < ngroups; i += group_size) {
+                    x += group_result[i];
+                }
+
+                // sub-group reduction
+                auto const& sg = item.get_sub_group();
+                for (int offset = sub_group_size/2; offset > 0; offset /= 2) {
+                    T y = sg.shuffle_down(x, offset);
+                    x += y;
+                }
+
+                // Only the first thread in a sub-group has the full result
+                // because of shuffle_down.  It will store the result in
+                // shared local memory.
+                T* shared = shared_data.get_pointer();
+                if (sg.get_local_id()[0] == 0) {
+                    shared[sg.get_group_id()[0]] = x;
+                }
+                item.barrier(sycl::access::fence_space::local_space);
+
+                // The sub-group results are in shared local memory now.
+                // The first sub-group in a group will reduce that further
+                // for the whole group.
+                x = (item.get_local_linear_id() < sg.get_group_range()[0])
+                    ? shared[sg.get_local_id()[0]] : T(0);
+                if (sg.get_group_id() == 0) {
+                    for (int offset = sub_group_size/2; offset > 0; offset /= 2) {
+                        T y = sg.shuffle_down(x, offset);
+                        x += y;
+                    }
+                }
+
+                // Now the first thread in a group has the group reduction
+                // result.  It will store the result.
+                if (item.get_local_linear_id() == 0) {
+                    *presult = x;
+                }
+            });
+        });
+
+#ifndef AMREX_NO_DPCPP_REDUCE_WORKAROUND
+        q.submit([&] (sycl::handler& h) { h.memcpy(final_result, presult, sizeof(T)); });
+#endif
+
+        q.wait_and_throw();
+
+        T sum = *final_result;
+
+        // free memory
+        MY_FREE_DEVICE(group_result);
+        MY_FREE_HOST(final_result);
+#ifndef AMREX_NO_DPCPP_REDUCE_WORKAROUND
+        MY_FREE_DEVICE(presult);
+#endif
+
+        double t1 = amrex::second();
+
+        if (n == 0) {
+            result.push_back(sum);
+            desc.push_back("    amrex2 sum = ");
+        }
+        ttmp = std::min(ttmp, t1-t0);
+    }
+    twall.push_back(ttmp);
+
 #endif
 
     for (int i = 0; i < desc.size(); ++i) {
