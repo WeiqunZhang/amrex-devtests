@@ -211,7 +211,7 @@ void test_reduce_sum (int npts)
         // amrex reduction is reproduced here.
         // It seems that using amrex::The_Arena helps a lot.
 
-#if 0
+#if 1
 #define MY_ALLOC_DEVICE(x) sycl::malloc_device(x, dev, ctx)
 #define MY_ALLOC_HOST(x)   sycl::malloc_host(x, ctx)
 #define MY_FREE_DEVICE(x)  sycl::free(x, ctx);
