@@ -3,65 +3,101 @@
 #include <AMReX.H>
 #include <AMReX_VisMF.H>
 #include <AMReX_ParmParse.H>
+#include <AMReX_GpuComplex.H>
 
 #include <cmath>
 
 using namespace amrex;
+using Complex = amrex::GpuComplex<amrex::Real>;
 
 int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
     {
         int type = 2;
-        int n_cell = 64;
+        int n_cell = 512;
         ParmParse pp;
         pp.query("type", type);
         pp.query("n_cell", n_cell);
 
-        Box domain(IntVect(0,0,10), IntVect(n_cell-1,n_cell-1,10));
-        Geometry geom(domain, RealBox({0.,0.,0.},{1.,1.,1.}), 0, {0,0,0});
+        // Constants
+        constexpr Real pi = 3.1415926535897932;
+        const Complex I(0,1);
+        const Real c = 299'792'458.;
+        // Laser parameters
+        const Real w0 = 40.e-6;
 
-        FArrayBox s(domain, 2);
-        FArrayBox f(domain, 2);
-        FArrayBox a(domain, 1);
-        Real ar = 2.;
+        Box domain(IntVect(0,0,100), IntVect(n_cell-1,n_cell-1,100));
+        Geometry geom(domain, RealBox({
+                    -200.e-6,
+                    -200.e-6,
+                    -  .8e-6},{
+                    +200.e-6,
+                    +200.e-6,
+                    +  .6e-6}), 0, {0,0,0});
 
+        // typical parameters
+        auto dx  = geom.CellSizeArray();
+        amrex::Real dt = 10.e-15;
+
+        FArrayBox s(domain, 2); // sol
+        FArrayBox f(domain, 2); // rhs
+        FArrayBox a(domain, 1); // acoef_imag
+        Real ar = 1.e2/w0/w0;// -3._rt/(c*dt*dx[2]) + 2._rt/(c*c*dt*dt);
+        Real ai = 0.e-1/w0/w0;//0.;// -2._rt*k0 / (c*dt);
+
+        const int imin = domain.smallEnd(0);
+        const int imax = domain.bigEnd  (0);
+        const int jmin = domain.smallEnd(1);
+        const int jmax = domain.bigEnd  (1);
         {
-            auto s_arr = s.array();
-            auto f_arr = f.array();
-            auto a_arr = a.array();
+            auto s_arr = s.array(); // sol
+            auto f_arr = f.array(); // rhs
+            auto a_arr = a.array(); // acoef_imag
             auto plo = geom.ProbLoArray();
-            auto dx  = geom.CellSizeArray();
             amrex::ParallelFor(domain, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
                 Real x = plo[0] + (i+0.5)*dx[0];
                 Real y = plo[1] + (j+0.5)*dx[1];
-                constexpr Real pi = 3.1415926535897932;
-                s_arr(i,j,k,0) = std::sin(2.*pi*x) * std::sin(3.*pi*y);
-                s_arr(i,j,k,1) = std::sin(4.*pi*x) * std::sin(2.*pi*y);
-                a_arr(i,j,k) = 1.0 + 0.25*std::cos(1.75*pi*x)*std::cos(0.8*pi*y);
+                Real z = plo[2] + (k+0.5_rt)*dx[2];
+                
+                s_arr(i,j,k,0) = exp(-( x*x + y*y )/w0/w0);
+                s_arr(i,j,k,1) = 0.;
+
+                Real lapR = 4.*(-1.+1.*(x*x+y*y)/w0/w0)/w0/w0*s_arr(i,j,k,0);
+                Real lapI = 0.;
+
+                a_arr(i,j,k) = ai;
                 if (type == 1) {
-                    f_arr(i,j,k,0) = (-a_arr(i,j,k) - 13.*pi*pi) * s_arr(i,j,k,0);
-                    f_arr(i,j,k,1) = (-a_arr(i,j,k) - 20.*pi*pi) * s_arr(i,j,k,1);
+                    f_arr(i,j,k,0) = lapR;
+                    f_arr(i,j,k,1) = lapI;
                 } else {
-                    f_arr(i,j,k,0) = -ar*s_arr(i,j,k,0) + a_arr(i,j,k)*s_arr(i,j,k,1)
-                        - 13.*pi*pi*s_arr(i,j,k,0);
-                    f_arr(i,j,k,1) = -ar*s_arr(i,j,k,1) - a_arr(i,j,k)*s_arr(i,j,k,0)
-                        - 20.*pi*pi*s_arr(i,j,k,1);
+                    // check above if ai and ar are 0 or not.
+                    f_arr(i,j,k,0) =
+                        + lapR
+                        - ar * s_arr(i,j,k,0)
+                        + ai * s_arr(i,j,k,1);
+                    f_arr(i,j,k,1) =
+                        + lapI
+                        - ar * s_arr(i,j,k,1)
+                        - ai * s_arr(i,j,k,0);
                 }
             });
         }
 
+        // Solving lap f - a*f = lap f0 - a*f0
+            
         FArrayBox s0(domain,2);
         s0.setVal<RunOn::Device>(0.);
 
         hpmg::MultiGrid mgz(geom);
 
         if (type == 1) {
-            mgz.solve1(s0, f, a, 1.0e-11, 0.0, 100, 2);
+            mgz.solve1(s0, f, a, 1.0e-12, 0.0, 100, 2);
         } else {
-            mgz.solve2(s0, f, ar, a, 1.0e-11, 0.0, 100, 2);
-        }
+            // sol, rhs, acoef_real acoef_imag, tol...
+            mgz.solve2(s0, f, ar, a, 1.0e-12, 0.0, 100, 2);
+         }
 
         {
             std::ofstream ofs("s0");
@@ -74,6 +110,11 @@ int main(int argc, char* argv[])
 
         s0.minus<RunOn::Device>(s);
         amrex::Print() << "Max error: " << s0.maxabs<RunOn::Device>() << std::endl;
+        amrex::Print() << "Max solut: " << s .maxabs<RunOn::Device>() << std::endl;
+        // amrex::Print() << "Max error: " << s0.sum<RunOn::Device>() << std::endl;
     }
     amrex::Finalize();
 }
+
+
+// amrex::Print()<<diffract_factor<<" -- "<<inv_complex_waist_2<<" -- "<<prefactor<<" -- "<<time_exponent<<" -- "<<stcfactor<<" -- "<<exp_argument<<" -- "<<envelope<<" -- "<<z<<'\n';
