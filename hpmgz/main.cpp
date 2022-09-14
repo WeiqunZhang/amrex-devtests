@@ -18,6 +18,7 @@ int main(int argc, char* argv[])
         int n_cell = 512;
         ParmParse pp;
         pp.query("type", type);
+        amrex::Print()<<"type "<<type<<'\n';
         pp.query("n_cell", n_cell);
 
         // Constants
@@ -43,8 +44,10 @@ int main(int argc, char* argv[])
         FArrayBox s(domain, 2); // sol
         FArrayBox f(domain, 2); // rhs
         FArrayBox a(domain, 1); // acoef_imag
-        Real ar = 1.e2/w0/w0;// -3._rt/(c*dt*dx[2]) + 2._rt/(c*c*dt*dt);
-        Real ai = 0.e-1/w0/w0;//0.;// -2._rt*k0 / (c*dt);
+        Real ar =  0./w0/w0;
+        Real fac = 0.;
+        pp.query("fac", fac);
+        Real ai = fac/w0/w0;
 
         const int imin = domain.smallEnd(0);
         const int imax = domain.bigEnd  (0);
@@ -63,14 +66,14 @@ int main(int argc, char* argv[])
                 
                 s_arr(i,j,k,0) = exp(-( x*x + y*y )/w0/w0);
                 s_arr(i,j,k,1) = 0.;
+                a_arr(i,j,k) = ai;
 
                 Real lapR = 4.*(-1.+1.*(x*x+y*y)/w0/w0)/w0/w0*s_arr(i,j,k,0);
                 Real lapI = 0.;
 
-                a_arr(i,j,k) = ai;
                 if (type == 1) {
-                    f_arr(i,j,k,0) = lapR;
-                    f_arr(i,j,k,1) = lapI;
+                    f_arr(i,j,k,0) = lapR - ai * s_arr(i,j,k,0);
+                    f_arr(i,j,k,1) = lapI - ai * s_arr(i,j,k,1);
                 } else {
                     // check above if ai and ar are 0 or not.
                     f_arr(i,j,k,0) =
@@ -93,10 +96,10 @@ int main(int argc, char* argv[])
         hpmg::MultiGrid mgz(geom);
 
         if (type == 1) {
-            mgz.solve1(s0, f, a, 1.0e-12, 0.0, 100, 2);
+            mgz.solve1(s0, f, a, 1.0e-11, 0.0, 100, 2);
         } else {
             // sol, rhs, acoef_real acoef_imag, tol...
-            mgz.solve2(s0, f, ar, a, 1.0e-12, 0.0, 100, 2);
+            mgz.solve2(s0, f, ar, a, 1.0e-11, 0.0, 100, 2);
          }
 
         {
@@ -111,6 +114,7 @@ int main(int argc, char* argv[])
         s0.minus<RunOn::Device>(s);
         amrex::Print() << "Max error: " << s0.maxabs<RunOn::Device>() << std::endl;
         amrex::Print() << "Max solut: " << s .maxabs<RunOn::Device>() << std::endl;
+        AMREX_ALWAYS_ASSERT(s0.maxabs<RunOn::Device>()<1e-4);
         // amrex::Print() << "Max error: " << s0.sum<RunOn::Device>() << std::endl;
     }
     amrex::Finalize();
