@@ -9,7 +9,7 @@ ifeq ($(USE_CUDA),TRUE)
 else
 
   CXX = hipcc
-  CXXFLAGS = -std=c++17 -m64 -g -O3 --amdgpu-target=gfx90a -fgpu-rdc
+  CXXFLAGS = -std=c++17 -m64 -g -O3 --amdgpu-target=gfx90a -fgpu-rdc -Wno-unused-result
   LINKFLAGS = --amdgpu-target=gfx90a -fgpu-rdc
 
 endif

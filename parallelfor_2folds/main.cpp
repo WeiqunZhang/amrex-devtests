@@ -3,6 +3,10 @@
 #include <string>
 #include <vector>
 
+#ifdef __HIP__
+#include <hip/hip_runtime.h>
+#endif
+
 template <int... ctr>
 struct CompiletimeOptions {};
 
@@ -57,6 +61,12 @@ int main (int argc, char* argv[])
     hipMallocManaged(&pb, N*sizeof(int));
 #endif
 
+    ParallelFor(N, [=] __device__ (std::size_t i)
+    {
+        pa[i] = -1;
+        pb[i] = -1;
+    });
+
     enum A_options: int {
         A0 = 0, A1
     };
@@ -72,7 +82,6 @@ int main (int argc, char* argv[])
         B_runtime_option = std::stoi(std::string(argv[2])) % 2;
     }
 
-#if 0
     ParallelFor(N, [=] __device__ (std::size_t i, auto A_control, auto B_control)
     {
         auto lpa = pa; // nvcc limitation
@@ -92,12 +101,6 @@ int main (int argc, char* argv[])
         A_runtime_option,
         CompiletimeOptions<B0,B1>{},
         B_runtime_option);
-#else
-    ParallelFor(N, [=] __device__ (std::size_t i)
-    {
-        pa[i] = 1;
-    });
-#endif
 
 #ifdef __CUDACC__
     cudaDeviceSynchronize();
