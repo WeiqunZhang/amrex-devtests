@@ -3,7 +3,9 @@
 #include <string>
 #include <vector>
 
-#ifdef __HIP__
+#ifdef __CUDACC__
+#include <cuda_runtime.h>
+#else
 #include <hip/hip_runtime.h>
 #endif
 
