@@ -12,13 +12,33 @@
 template <int... ctr>
 struct CompiletimeOptions {};
 
-template <int Value>
-using int_c = std::integral_constant<int, Value>;
+template <int V>
+using IntConst = std::integral_constant<int, V>;
+
+namespace meta {
+
+    template <typename... Ts>
+    struct List {};
+
+    template <typename... Ts>
+    static constexpr List<Ts...> list{};
+
+    template <typename... As, typename... Bs>
+    constexpr List<As..., Bs...> operator+ (List<As...>, List<Bs...>) { return {}; }
+
+    template <typename A, typename... Bs>
+    constexpr List<List<A,Bs>...> product (A, List<Bs...> b) { return {}; }
+
+    template <typename... As, typename... Bs>
+    constexpr auto cartesian_product (List<As...>, List<Bs...> b) {
+        return (list<> + ... + product(As{}, b));
+    }
+}
 
 template <class L> __global__ void launch_global (L f) { f(); }
 
 template <class F>
-void ParallelFor(std::size_t N, F&& f)
+void ParallelFor (std::size_t N, F&& f)
 {
     std::size_t nthreads = 128;
     std::size_t nblocks = (N+nthreads-1)/nthreads;
@@ -29,33 +49,36 @@ void ParallelFor(std::size_t N, F&& f)
     });
 }
 
-template <class F, int... As, int... Bs>
-void ParallelFor(std::size_t N, F&& f, CompiletimeOptions<As...>, int A_option,
-                 CompiletimeOptions<Bs...>, int B_option)
+template <class F, int A, int B>
+bool ParallelFor_helper2 (std::size_t N, F&& f, meta::List<IntConst<A>, IntConst<B>>, int Ao, int Bo)
 {
-#if 0
-    int option_miss = 0;
-    (
-        ([=,&option_miss] (auto B) {
-            static constexpr int b = B();
-            ((
-            ((As == A_option) && (b == B_option)) ?
-                ParallelFor(N, [f] __device__ (std::size_t i) {
-                    f(i, int_c<As>{}, int_c<b>{});
-                })
-            : (
-                ++option_miss, void()
-              )
-            ), ...);
-        }(int_c<Bs>{}), ...)
-    );
-    assert(option_miss + 1 == sizeof...(As) * sizeof...(Bs));
-#else
-    ParallelFor(N, [f] __device__ (std::size_t i)
-    {
-        f(i, int_c<1>{}, int_c<1>{});
-    });
-#endif
+    if (A == Ao && B == Bo) {
+        ParallelFor(N, [f] __device__ (std::size_t i)
+        {
+            f(i, IntConst<A>{}, IntConst<B>{});
+        });
+        return true;
+    } else {
+        return false;
+    }
+}
+
+template <class F, typename... CTOs>
+void ParallelFor_helper1 (std::size_t N, F&& f, meta::List<CTOs...>, int Ao, int Bo)
+{
+    bool found_option = (false || ... || ParallelFor_helper2(N, std::forward<F>(f), CTOs{}, Ao, Bo));
+    assert(found_option);
+}
+
+template <class F, int... As, int... Bs>
+void ParallelFor (std::size_t N, F&& f,
+                  CompiletimeOptions<As...>, int A_option,
+                  CompiletimeOptions<Bs...>, int B_option)
+{
+    using AL = meta::List<IntConst<As>...>;
+    using BL = meta::List<IntConst<Bs>...>;
+    using CTOs = decltype(meta::cartesian_product(AL{}, BL{}));
+    ParallelFor_helper1(N, std::forward<F>(f), CTOs{}, A_option, B_option);
 }
 
 int main (int argc, char* argv[])
