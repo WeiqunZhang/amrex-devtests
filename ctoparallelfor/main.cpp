@@ -31,7 +31,11 @@ int main (int argc, char* argv[])
         for (int Bi = 0; Bi < 4; ++Bi) {
         for (int Ci = 0; Ci < 2; ++Ci) {
 
-            ParallelFor(N, [=] AMREX_GPU_DEVICE (int i, auto A_control, auto B_control,
+            ParallelFor(TypeList<CompileTimeOptions<A0,A1>,
+                                 CompileTimeOptions<B0,B1,B2,B3>,
+                                 CompileTimeOptions<C0,C1>>{},
+                        {Ai, Bi, Ci},
+                        N, [=] AMREX_GPU_DEVICE (int i, auto A_control, auto B_control,
                                                  auto C_control)
             {
                 auto lpa = pa; // nvcc limitation
@@ -56,11 +60,7 @@ int main (int argc, char* argv[])
                 } else if constexpr (C_control.value == C1) {
                     lpc[i] = 1;
                 }
-            },
-            TypeList<CompileTimeOptions<A0,A1>,
-                     CompileTimeOptions<B0,B1,B2,B3>,
-                     CompileTimeOptions<C0,C1>>{},
-            {Ai, Bi, Ci});
+            });
         
             Gpu::synchronize();
             std::cout << "  a = " << pa[0]
@@ -71,7 +71,10 @@ int main (int argc, char* argv[])
 
         for (int Ai = 0; Ai < 2; ++Ai) {
         for (int Bi = 0; Bi < 4; ++Bi) {
-            ParallelFor(N, [=] AMREX_GPU_DEVICE (int i, auto A_control, auto B_control)
+            ParallelFor(TypeList<CompileTimeOptions<A0,A1>,
+                                 CompileTimeOptions<B0,B1,B2,B3>>{},
+                        {Ai,Bi},
+                        N, [=] AMREX_GPU_DEVICE (int i, auto A_control, auto B_control)
             {
                 auto lpa = pa; // nvcc limitation
                 auto lpb = pb;
@@ -89,10 +92,7 @@ int main (int argc, char* argv[])
                 } else if constexpr (B_control.value == B3) {
                     lpb[i] = 13;
                 }
-            },
-                TypeList<CompileTimeOptions<A0,A1>,
-                         CompileTimeOptions<B0,B1,B2,B3>>{},
-                {Ai,Bi});
+            });
         
             Gpu::synchronize();
             std::cout << "  a = " << pa[0]
@@ -101,7 +101,9 @@ int main (int argc, char* argv[])
         }}
 
         for (int Ai = 0; Ai < 2; ++Ai) {
-            ParallelFor(N, [=] AMREX_GPU_DEVICE (int i, auto control)
+            ParallelFor(TypeList<CompileTimeOptions<A0,A1>>{},
+                        {Ai},
+                        N, [=] AMREX_GPU_DEVICE (int i, auto control)
             {
                 auto lpa = pa;
                 if constexpr (control.value == A0) {
@@ -110,9 +112,7 @@ int main (int argc, char* argv[])
                 if constexpr (control.value == A1) {
                     lpa[i] = 31;       
                 }
-            },
-                TypeList<CompileTimeOptions<A0,A1>>{},
-                {Ai});
+            });
 
             Gpu::synchronize();
             std::cout << "  a = " << pa[0] << "\n";
@@ -124,7 +124,10 @@ int main (int argc, char* argv[])
         auto const& a1 = fab1.array();
         auto const& a2 = fab2.array();
 
-        ParallelFor(box, [=] AMREX_GPU_DEVICE (int i, int j, int k,
+        ParallelFor(TypeList<CompileTimeOptions<A0,A1>,
+                             CompileTimeOptions<B0,B1>>{},
+                    {A1, B1},
+                    box, [=] AMREX_GPU_DEVICE (int i, int j, int k,
                                                auto A_control, auto B_control)
         {
             auto const& la1 = a1;
@@ -133,15 +136,15 @@ int main (int argc, char* argv[])
             } else {
                 la1(i,j,k) = 10;
             }
-        },
-            TypeList<CompileTimeOptions<A0,A1>,
-                     CompileTimeOptions<B0,B1>>{},
-            {A1, B1});
+        });
 
         amrex::Print() << "  fab1.sum(0) = " << fab1.sum(0)
                        << " expected value = " << box.numPts()*11 << "\n";
 
-        ParallelFor(box, 2, [=] AMREX_GPU_DEVICE (int i, int j, int k, int n,
+        ParallelFor(TypeList<CompileTimeOptions<A0,A1>,
+                             CompileTimeOptions<B0,B1>>{},
+                    {A1, B0},
+                    box, 2, [=] AMREX_GPU_DEVICE (int i, int j, int k, int n,
                                                   auto A_control, auto B_control)
         {
             auto const& la2 = a2;
@@ -150,15 +153,14 @@ int main (int argc, char* argv[])
             } else {
                 la2(i,j,k,n) = 10;
             }
-        },
-            TypeList<CompileTimeOptions<A0,A1>,
-                     CompileTimeOptions<B0,B1>>{},
-            {A1, B0});
+        });
 
         amrex::Print() << " fab2.sum(1) = " << fab2.sum(1)
                        << " expected value = " << box.numPts()*10 << "\n";
 
-        ParallelFor(box, [=] AMREX_GPU_DEVICE (int i, int j, int k, auto A_control)
+        ParallelFor(TypeList<CompileTimeOptions<A0,A1>>{},
+                    {A1},
+                    box, [=] AMREX_GPU_DEVICE (int i, int j, int k, auto A_control)
         {
             auto const& la1 = a1;
             if constexpr (A_control.value == 1) {
@@ -166,14 +168,14 @@ int main (int argc, char* argv[])
             } else {
                 la1(i,j,k) = 100;
             }
-        },
-            TypeList<CompileTimeOptions<A0,A1>>{},
-            {A1});
+        });
 
         amrex::Print() << "  fab1.sum(0) = " << fab1.sum(0)
                        << " expected value = " << box.numPts()*101 << "\n";
 
-        ParallelFor(box, 2, [=] AMREX_GPU_DEVICE (int i, int j, int k, int n,
+        ParallelFor(TypeList<CompileTimeOptions<A0,A1>>{},
+                    {A0},
+                    box, 2, [=] AMREX_GPU_DEVICE (int i, int j, int k, int n,
                                                   auto A_control)
         {
             auto const& la2 = a2;
@@ -182,9 +184,7 @@ int main (int argc, char* argv[])
             } else {
                 la2(i,j,k,n) = 200;
             }
-        },
-            TypeList<CompileTimeOptions<A0,A1>>{},
-            {A0});
+        });
 
         amrex::Print() << " fab2.sum(1) = " << fab2.sum(1)
                        << " expected value = " << box.numPts()*200 << "\n";
