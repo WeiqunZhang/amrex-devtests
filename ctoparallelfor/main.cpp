@@ -138,7 +138,7 @@ int main (int argc, char* argv[])
             }
         });
 
-        amrex::Print() << "  fab1.sum(0) = " << fab1.sum(0)
+        amrex::Print() << "  fab1.sum(0) = " << fab1.sum<RunOn::Device>(0)
                        << " expected value = " << box.numPts()*11 << "\n";
 
         ParallelFor(TypeList<CompileTimeOptions<A0,A1>,
@@ -155,7 +155,7 @@ int main (int argc, char* argv[])
             }
         });
 
-        amrex::Print() << " fab2.sum(1) = " << fab2.sum(1)
+        amrex::Print() << " fab2.sum(1) = " << fab2.sum<RunOn::Device>(1)
                        << " expected value = " << box.numPts()*10 << "\n";
 
         ParallelFor(TypeList<CompileTimeOptions<A0,A1>>{},
@@ -170,7 +170,7 @@ int main (int argc, char* argv[])
             }
         });
 
-        amrex::Print() << "  fab1.sum(0) = " << fab1.sum(0)
+        amrex::Print() << "  fab1.sum(0) = " << fab1.sum<RunOn::Device>(0)
                        << " expected value = " << box.numPts()*101 << "\n";
 
         ParallelFor(TypeList<CompileTimeOptions<A0,A1>>{},
@@ -186,7 +186,7 @@ int main (int argc, char* argv[])
             }
         });
 
-        amrex::Print() << " fab2.sum(1) = " << fab2.sum(1)
+        amrex::Print() << " fab2.sum(1) = " << fab2.sum<RunOn::Device>(1)
                        << " expected value = " << box.numPts()*200 << "\n";
     }
     amrex::Finalize();
