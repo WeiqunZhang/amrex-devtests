@@ -73,6 +73,11 @@ public:
                  amrex::Real const tol_rel, amrex::Real const tol_abs,
                  int const nummaxiter, int const verbose);
 
+    void bicgstab2 (amrex::FArrayBox& sol, amrex::FArrayBox const& rhs,
+                    amrex::Real const acoef_real, amrex::FArrayBox const& acoef_imag,
+                    amrex::Real const tol_rel, amrex::Real const tol_abs,
+                    int const nummaxiter, int const verbose);
+
     /** \brief Average down the coefficient.  Ideally, this function is not
      * supposed to be a public function.  It's made public due to a CUDA
      * limitation. */

@@ -9,6 +9,8 @@
 //xxxxx#include "utils/HipaceProfilerWrapper.H"
 #include <algorithm>
 
+#include <AMReX_ParmParse.H>
+
 using namespace amrex;
 
 namespace hpmg {
@@ -139,6 +141,30 @@ void compute_residual (Box const& box, Array4<Real> const& res,
                                       acf_real, acf(i,j,0), facx, facy);
             res(i,j,0,1) = residual2i(i, j, ilo, jlo, ihi, jhi, phi, rhs(i,j,0,1),
                                       acf_real, acf(i,j,0), facx, facy);
+        });
+    }
+}
+
+// L(phi)
+void apply (Box const& box, Array4<Real> const& Ax, Array4<Real> const& phi,
+            Array4<Real const> const& acf, Real dx, Real dy, int system_type,
+            Real acf_real)
+{
+    int const ilo = box.smallEnd(0);
+    int const jlo = box.smallEnd(1);
+    int const ihi = box.bigEnd(0);
+    int const jhi = box.bigEnd(1);
+    Real facx = Real(1.)/(dx*dx);
+    Real facy = Real(1.)/(dy*dy);
+    if (system_type == 1) {
+        amrex::Abort("apply type 1 todo");
+    } else {
+        hpmg::ParallelFor(box, [=] AMREX_GPU_DEVICE (int i, int j, int) noexcept
+        {
+            Real lapr = laplacian(i,j,0,ilo,jlo,ihi,jhi,phi,facx,facy);
+            Real lapi = laplacian(i,j,1,ilo,jlo,ihi,jhi,phi,facx,facy);
+            Ax(i,j,0,0) = lapr - acf_real*phi(i,j,0,0) + acf(i,j,0)*phi(i,j,0,1);
+            Ax(i,j,0,1) = lapi - acf_real*phi(i,j,0,1) - acf(i,j,0)*phi(i,j,0,0);
         });
     }
 }
@@ -398,6 +424,126 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
 
 #endif // AMREX_USE_GPU
 
+void bicgstab2_doit (Box const& box, Real dx, Real dy,
+                     FArrayBox& sol, FArrayBox const& rhs,
+                     Real const ar, FArrayBox const& acf,
+                     Real const tol_rel, Real const tol_abs,
+                     int const nummaxiter, int const verbose)
+{
+    FArrayBox ph(box, 2);
+    FArrayBox sh(box, 2);
+    ph.setVal(0.0);
+    sh.setVal(0.0);
+
+    FArrayBox sorig(box, 2);
+    FArrayBox p    (box, 2);
+    FArrayBox r    (box, 2);
+    FArrayBox s    (box, 2);
+    FArrayBox rh   (box, 2);
+    FArrayBox v    (box, 2);
+    FArrayBox t    (box, 2);
+
+    compute_residual(box, r.array(), sol.array(), rhs.const_array(),
+                     acf.const_array(), dx, dy, 2, ar);
+    sorig.copy(sol);
+    rh.copy(r);
+
+    sol.setVal(0.);
+
+    Real rnorm = r.norm(0, 0, 2);
+    const Real rnorm0 = rnorm;
+
+    if (verbose > 0) {
+        amrex::Print() << "BiCGStab: Initial error = " << rnorm0 << "\n";
+    }
+
+    if (rnorm0 == 0 || rnorm0 < tol_abs) {
+        if (verbose > 0) {
+            amrex::Print() << "BiCGStab: niter = 0, rnorm = " << rnorm
+                           << ", tol_abs = " << tol_abs << std::endl;
+        }
+        return;
+    }
+
+    Real rho_1 = 0., alpha = 0., omega = 0.;
+    int iter = 1;
+    for (; iter <= nummaxiter; ++iter) {
+        const Real rho = rh.dot(box, 0, r, box, 0, 2);
+        if (rho == 0.) {
+            break;
+        }
+        if (iter == 1) {
+            p.copy(r);
+        } else {
+            const Real beta = (rho/rho_1)*(alpha/omega);
+            p.saxpy(-omega, v, box, box, 0, 0, 2);
+            p.linComb(r, box, 0, p, box, 0, 1.0, beta, box, 0, 2);
+        }
+        ph.copy(p);
+        apply(box, v.array(), ph.array(), acf.const_array(), dx, dy, 2, ar);
+
+        Real rhTv = rh.dot(box, 0, v, box, 0, 2);
+        if (rhTv != Real(0.)) {
+            alpha = rho/rhTv;
+        } else {
+            break;
+        }
+        sol.saxpy(alpha, ph, box, box, 0, 0, 2);
+        s.linComb(r, box, 0, v, box, 0, 1.0, -alpha, box, 0, 2);
+
+        rnorm = s.norm(0, 0, 2);
+        if (verbose >= 2) { // xxxxx
+            amrex::Print() << "BiCGStab: Half Iter "
+                           << iter << " rel. err. "
+                           << rnorm/rnorm0 << "\n";
+        }
+
+        if (rnorm < tol_rel*rnorm0 || rnorm < tol_abs) {
+            break;
+        }
+
+        sh.copy(s);
+        apply(box, t.array(), sh.array(), acf.const_array(), dx, dy, 2, ar);
+
+        Real tvals[2] = { t.dot(box, 0, t, box, 0, 2),
+                          t.dot(box, 0, s, box, 0, 2) };
+
+        if (tvals[0] != Real(0.)) {
+            omega = tvals[1]/tvals[0];
+        } else {
+            break;
+        }
+        sol.saxpy(omega, sh, box, box, 0, 0, 2);
+        r.linComb(s, box, 0, t, box, 0, 1.0, -omega, box, 0, 2);
+
+        rnorm = r.norm(0, 0, 2);
+
+        if (verbose >= 2) { //xxxxx
+            amrex::Print() << "BiCGStab: Iteration "
+                           << iter << " rel. err. "
+                           << rnorm/rnorm0 << "\n";
+        }
+
+        if (rnorm < tol_rel*rnorm0 || rnorm < tol_abs) {
+            break;
+        }
+
+        if (omega == 0) {
+            break;
+        }
+        rho_1 = rho;
+    }
+
+    if (verbose > 0) {
+        amrex::Print() << "BiCGStab: Final Iteration " << iter << " rel. err. "
+                       << rnorm/rnorm0 << "\n";
+    }
+
+    if (rnorm > tol_rel*rnorm0 && rnorm > tol_abs) {
+        amrex::Abort("BiCGStab failed to converge!");
+    }
+}
+
 } // namespace {}
 
 MultiGrid::MultiGrid (Geometry const& geom)
@@ -406,8 +552,14 @@ MultiGrid::MultiGrid (Geometry const& geom)
     Box const& a_domain = geom.Domain();
     AMREX_ALWAYS_ASSERT(a_domain.length(2) == 1 && a_domain.cellCentered());
 
+    int max_level = 4;
+    {
+        ParmParse pp;
+        pp.query("max_level", max_level);
+    }
+
     m_domain.push_back(amrex::makeSlab(a_domain, 2, 0));
-    for (int i = 0; i < 30; ++i) {
+    for (int i = 0; i < max_level; ++i) {
         if (m_domain.back().coarsenable(IntVect(2,2,1), IntVect(2,2,1))) {
             m_domain.push_back(amrex::coarsen(m_domain.back(),IntVect(2,2,1)));
         } else {
@@ -726,11 +878,18 @@ MultiGrid::bottomsolve ()
 #else
     const int ilev = m_single_block_level_begin;
     m_cor[ilev].setVal(Real(0.));
+
+#if 0
     for (int is = 0; is < nsweeps; ++is) {
         gsrb(is, m_domain[ilev], m_cor[ilev].array(),
              m_res[ilev].const_array(), m_acf[ilev].const_array(), dx0, dy0,
              m_system_type, m_acf_real);
     }
+#else
+    bicgstab2_doit(m_domain[ilev], dx0, dy0, m_cor[ilev], m_res[ilev],
+                   m_acf_real, m_acf[ilev], 1.0e-4, 0.0, 200, 2);
+#endif
+
 #endif
 }
 
@@ -825,6 +984,21 @@ MultiGrid::~MultiGrid ()
         }
     }
 #endif
+}
+
+void
+MultiGrid::bicgstab2 (FArrayBox& a_sol, FArrayBox const& a_rhs,
+                      Real const a_acf_real, FArrayBox const& a_acf_imag,
+                      Real const tol_rel, Real const tol_abs,
+                      int const nummaxiter, int const verbose)
+{
+    m_sol = FArrayBox(amrex::makeSlab(a_sol.box(), 2, 0), 2, a_sol.dataPtr());
+    m_rhs = FArrayBox(amrex::makeSlab(a_rhs.box(), 2, 0), 2, a_rhs.dataPtr());
+    auto acf = FArrayBox(amrex::makeSlab(a_acf_imag.box(), 2, 0), 1, a_acf_imag.dataPtr());
+
+    bicgstab2_doit(m_domain[0], m_dx, m_dy,
+                   m_sol, m_rhs, a_acf_real, acf, tol_rel, tol_abs,
+                   nummaxiter, verbose);
 }
 
 }
