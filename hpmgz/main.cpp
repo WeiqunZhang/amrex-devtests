@@ -100,7 +100,6 @@ int main(int argc, char* argv[])
         } else {
             // sol, rhs, acoef_real acoef_imag, tol...
             mgz.solve2(s0, f, ar, a, 1.0e-11, 0.0, 100, 2);
-//            mgz.bicgstab2(s0, f, ar, a, 1.0e-11, 0.0, 100, 2);
          }
 
         {
