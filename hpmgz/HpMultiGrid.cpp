@@ -201,8 +201,41 @@ void gs2 (int i, int j, int ilo, int jlo, int ihi, int jhi,
           Array4<Real> const& phi, Real rhs_r, Real rhs_i,
           Real ar, Real ai, Real facx, Real facy)
 {
+#if 0
     gs1(i,j,0,ilo,jlo,ihi,jhi,phi, rhs_r-ai*phi(i,j,0,1), ar, facx, facy);
     gs1(i,j,1,ilo,jlo,ihi,jhi,phi, rhs_i+ai*phi(i,j,0,0), ar, facx, facy);
+#else
+    Real lap[2];
+    Real c0 = Real(-2.)*(facx+facy);
+    if (i == ilo) {
+        lap[0] = facx * Real(4./3.)*phi(i+1,j,0,0);
+        lap[1] = facx * Real(4./3.)*phi(i+1,j,0,1);
+        c0 -= Real(2.)*facx;
+    } else if (i == ihi) {
+        lap[0] = facx * Real(4./3.)*phi(i-1,j,0,0);
+        lap[1] = facx * Real(4./3.)*phi(i-1,j,0,1);
+        c0 -= Real(2.)*facx;
+    } else {
+        lap[0] = facx * (phi(i-1,j,0,0) + phi(i+1,j,0,0));
+        lap[1] = facx * (phi(i-1,j,0,1) + phi(i+1,j,0,1));
+    }
+    if (j == jlo) {
+        lap[0] += facy * Real(4./3.)*phi(i,j+1,0,0);
+        lap[1] += facy * Real(4./3.)*phi(i,j+1,0,1);
+        c0 -= Real(2.)*facy;
+    } else if (j == jhi) {
+        lap[0] += facy * Real(4./3.)*phi(i,j-1,0,0);
+        lap[1] += facy * Real(4./3.)*phi(i,j-1,0,1);
+        c0 -= Real(2.)*facy;
+    } else {
+        lap[0] += facy * (phi(i,j-1,0,0) + phi(i,j+1,0,0));
+        lap[1] += facy * (phi(i,j-1,0,1) + phi(i,j+1,0,1));
+    }
+    Real c[2] = {c0-ar, -ai};
+    Real cmag = Real(1.)/(c[0]*c[0] + c[1]*c[1]);
+    phi(i,j,0,0) = ((rhs_r-lap[0])*c[0] + (rhs_i-lap[1])*c[1]) * cmag;
+    phi(i,j,0,1) = ((rhs_i-lap[1])*c[0] - (rhs_r-lap[0])*c[1]) * cmag;
+#endif
 }
 
 void gsrb (int icolor, Box const& box, Array4<Real> const& phi,
@@ -552,7 +585,7 @@ MultiGrid::MultiGrid (Geometry const& geom)
     Box const& a_domain = geom.Domain();
     AMREX_ALWAYS_ASSERT(a_domain.length(2) == 1 && a_domain.cellCentered());
 
-    int max_level = 4;
+    int max_level = 30;
     {
         ParmParse pp;
         pp.query("max_level", max_level);
@@ -879,7 +912,7 @@ MultiGrid::bottomsolve ()
     const int ilev = m_single_block_level_begin;
     m_cor[ilev].setVal(Real(0.));
 
-#if 0
+#if 1
     for (int is = 0; is < nsweeps; ++is) {
         gsrb(is, m_domain[ilev], m_cor[ilev].array(),
              m_res[ilev].const_array(), m_acf[ilev].const_array(), dx0, dy0,
