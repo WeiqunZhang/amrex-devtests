@@ -26,6 +26,7 @@ __global__ void launch_global (L f) { f(); }
 __host__ __device__ void f ()
 {
     if constexpr (amrex::Target::isDevice()) {
+        __syncthreads();
         printf("On device\n");
     } else {
         std::cout << "On host\n";
@@ -38,4 +39,12 @@ int main (int argc, char* argv[])
     {
         f();
     });
+
+#if defined(AMREX_USE_CUDA)
+   cudaDeviceSynchronize();
+#elif defined(AMREX_USE_HIP)
+   hipDeviceSynchronize();
+#endif
+
+   f();
 }
