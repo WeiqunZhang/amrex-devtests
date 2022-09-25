@@ -1,5 +1,5 @@
 #include <AMReX.H>
-#include <AMReX_FArrayBox.H>
+#include <AMReX_IArrayBox.H>
 
 using namespace amrex;
 
@@ -63,9 +63,14 @@ int main (int argc, char* argv[])
             });
         
             Gpu::synchronize();
-            std::cout << "  a = " << pa[0]
-                      << ", b = " << pb[0]
-                      << ", c = " << pc[0] << "\n";
+            if (pa[0] == Ai && pb[0] == Bi && pc[0] == Ci) {
+                amrex::Print() << "PASS\n";
+            } else {
+                std::cout << "  a = " << pa[0]
+                          << ", b = " << pb[0]
+                          << ", c = " << pc[0] << "\n";
+                amrex::Abort("FAIL");
+            }
         }}}
 
 
@@ -95,9 +100,13 @@ int main (int argc, char* argv[])
             });
         
             Gpu::synchronize();
-            std::cout << "  a = " << pa[0]
-                      << ", b = " << pb[0] << "\n";
-
+            if (pa[0] == Ai+10 && pb[0] == Bi+10) {
+                amrex::Print() << "PASS\n";
+            } else {
+                std::cout << "  a = " << pa[0]
+                          << ", b = " << pb[0] << "\n";
+                amrex::Abort("FAIL");
+            }
         }}
 
         for (int Ai = 0; Ai < 2; ++Ai) {
@@ -115,12 +124,17 @@ int main (int argc, char* argv[])
             });
 
             Gpu::synchronize();
-            std::cout << "  a = " << pa[0] << "\n";
+            if (pa[0] == Ai+30) {
+                amrex::Print() << "PASS\n";
+            } else {
+                std::cout << "  a = " << pa[0] << "\n";
+                amrex::Abort("FAIL");
+            }
         }
 
         Box box(IntVect(0),IntVect(31));
-        FArrayBox fab1(box);
-        FArrayBox fab2(box,2);
+        IArrayBox fab1(box);
+        IArrayBox fab2(box,2);
         auto const& a1 = fab1.array();
         auto const& a2 = fab2.array();
 
@@ -138,8 +152,15 @@ int main (int argc, char* argv[])
             }
         });
 
-        amrex::Print() << "  fab1.sum(0) = " << fab1.sum<RunOn::Device>(0)
-                       << " expected value = " << box.numPts()*11 << "\n";
+        auto result = fab1.sum<RunOn::Device>(0);
+        auto expect = box.numPts()*11;
+        if (result == expect) {
+            amrex::Print() << "PASS\n";
+        } else {
+            amrex::Print() << "  fab1.sum(0) = " << result
+                           << " expected value = " << expect << "\n";
+            amrex::Abort("FAIL");
+        }
 
         ParallelFor(TypeList<CompileTimeOptions<A0,A1>,
                              CompileTimeOptions<B0,B1>>{},
@@ -155,8 +176,15 @@ int main (int argc, char* argv[])
             }
         });
 
-        amrex::Print() << " fab2.sum(1) = " << fab2.sum<RunOn::Device>(1)
-                       << " expected value = " << box.numPts()*10 << "\n";
+        result = fab2.sum<RunOn::Device>(1);
+        expect = box.numPts()*10;
+        if (result == expect) {
+            amrex::Print() << "PASS\n";
+        } else {
+            amrex::Print() << " fab2.sum(1) = " << result
+                           << " expected value = " << expect << "\n";
+            amrex::Abort("FAIL");
+        }
 
         ParallelFor(TypeList<CompileTimeOptions<A0,A1>>{},
                     {A1},
@@ -170,8 +198,15 @@ int main (int argc, char* argv[])
             }
         });
 
-        amrex::Print() << "  fab1.sum(0) = " << fab1.sum<RunOn::Device>(0)
-                       << " expected value = " << box.numPts()*101 << "\n";
+        result = fab1.sum<RunOn::Device>(0);
+        expect = box.numPts()*101;
+        if (result == expect) {
+            amrex::Print() << "PASS\n";
+        } else {
+            amrex::Print() << "  fab1.sum(0) = " << result
+                           << " expected value = " << expect << "\n";
+            amrex::Abort("FAIL");
+        }
 
         ParallelFor(TypeList<CompileTimeOptions<A0,A1>>{},
                     {A0},
@@ -186,8 +221,15 @@ int main (int argc, char* argv[])
             }
         });
 
-        amrex::Print() << " fab2.sum(1) = " << fab2.sum<RunOn::Device>(1)
-                       << " expected value = " << box.numPts()*200 << "\n";
+        result = fab2.sum<RunOn::Device>(1);
+        expect = box.numPts()*200;
+        if (result == expect) {
+            amrex::Print() << "PASS\n";
+        } else {
+            amrex::Print() << " fab2.sum(1) = " << result
+                           << " expected value = " << expect << "\n";
+            amrex::Abort("FAIL");
+        }
     }
     amrex::Finalize();
 }
