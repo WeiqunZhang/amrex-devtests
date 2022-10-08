@@ -183,14 +183,31 @@ AmrLevelAdv::advance (Real time,
            auto const& sdot = dSdt.arrays();
            amrex::ParallelFor(S, [=] (int bi, int i, int j, int k)
            {
-               Real a = (4.*sa[bi](i,j,k)
+               Real a = (sa[bi](i,j,k)
                          + sa[bi](i-1,j,k) + sa[bi](i+1,j,k)
-                         + sa[bi](i,j-1,k) + sa[bi](i,j+1,k))/8.;
-               sdot[bi](i,j,k) = std::sqrt(a);
+                         + sa[bi](i,j-1,k) + sa[bi](i,j+1,k))/5.;
+               sdot[bi](i,j,k) = std::pow(a,0.4);
            });
        });
 
     return dt;
+}
+
+void
+AmrLevelAdv::postCoarseTimeStep (Real time)
+{
+    AmrLevel::postCoarseTimeStep(time);
+
+    for (int lev = 0; lev < 2; ++lev)
+    {
+        MultiFab const& S_new = getLevel(lev).get_new_data(Phi_Type);
+        Real smin = S_new.min(0);
+        Real smax = S_new.max(0);
+        Real sexact = std::pow(1.+0.6*time, 5./3.);
+        amrex::Print() << "\n    Level = " << lev << " Time = " << time
+                       << " Error: [" << smin-sexact
+                       << ", " << smax-sexact << "], exact = " << sexact << "\n\n";
+    }
 }
 
 /**
@@ -274,19 +291,10 @@ void
 AmrLevelAdv::post_timestep (int iteration)
 {
     AmrLevel::post_timestep(iteration);
-}
 
-void
-AmrLevelAdv::postCoarseTimeStep (Real time)
-{
-    AmrLevel::postCoarseTimeStep(time);
-
-    MultiFab const& S_new = get_new_data(Phi_Type);
-    Real smin = S_new.min(0);
-    Real smax = S_new.max(0);
-    Real sexact = (0.5*time+1.)*(0.5*time+1.);
-    amrex::Print() << "\n    Time = " << time << " Error: [" << smin-sexact
-                   << ", " << smax-sexact << "], exact = " << sexact << "\n\n";
+    if (level < parent->finestLevel()) {
+        avgDown();
+    }
 }
 
 /**
