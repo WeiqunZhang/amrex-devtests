@@ -1,4 +1,7 @@
-#define SLOW_COMPILE 1
+// 1: very fast (e.g., 10 seconds)
+// 2: slow (e.g., 1 minute)
+// 3: very slow (e.g. 1 hour)
+#define COMPILE_OPTION 3
 
 #include <AMReX.H>
 #include <AMReX_MultiFab.H>
@@ -113,14 +116,21 @@ void test (MultiFab const& Ex, MultiFab const& Ey, MultiFab const& Ez,
                                                         i, j, k, comp);
             const amrex::Real Bx_cc = CoarsenIO::Interp(Bx_arr, Bx_stag, cc, cr,
                                                         i, j, k, comp);
+
+#if defined(COMPILE_OPTION) && (COMPILE_OPTION >= 2)
             const amrex::Real By_cc = CoarsenIO::Interp(By_arr, By_stag, cc, cr,
                                                         i, j, k, comp);
-#ifdef SLOW_COMPILE
+#else
+            const amrex::Real By_cc = By_arr(i,j,k);
+#endif
+
+#if defined(COMPILE_OPTION) && (COMPILE_OPTION >= 3)
             const amrex::Real Bz_cc = CoarsenIO::Interp(Bz_arr, Bz_stag, cc, cr,
                                                         i, j, k, comp);
 #else
             const amrex::Real Bz_cc = Bz_arr(i,j,k);
 #endif
+
             return {Ey_cc * Bz_cc - Ez_cc * By_cc,
                     Ez_cc * Bx_cc - Ex_cc * Bz_cc,
                     Ex_cc * By_cc - Ey_cc * Bx_cc};
