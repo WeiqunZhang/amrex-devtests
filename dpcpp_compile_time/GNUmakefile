@@ -16,11 +16,17 @@ BL_NO_FORT = TRUE
 
 LOG_BUILD_TIME = TRUE
 
-DEFINES += -DSLOW_COMPILE
+#DEFINES += -DSLOW_COMPILE
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
 
+# disable ccache
+CCACHE :=
+
 include ./Make.package
 include $(AMREX_HOME)/Src/Base/Make.package
+
+default: $(objEXETempDir)/main.o
+	@echo "SUCCESS"
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.rules

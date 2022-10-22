@@ -1,3 +1,5 @@
+#define SLOW_COMPILE 1
+
 #include <AMReX.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParmParse.H>
@@ -89,7 +91,6 @@ void test (MultiFab const& Ex, MultiFab const& Ey, MultiFab const& Ez,
         By_stag[i] = By.ixType()[i];
         Bz_stag[i] = Bz.ixType()[i];
     }
-
     for (amrex::MFIter mfi(Ex, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
         const amrex::Box & box = enclosedCells(mfi.nodaltilebox());
@@ -118,7 +119,7 @@ void test (MultiFab const& Ex, MultiFab const& Ey, MultiFab const& Ez,
             const amrex::Real Bz_cc = CoarsenIO::Interp(Bz_arr, Bz_stag, cc, cr,
                                                         i, j, k, comp);
 #else
-            const amrex::Bz_cc = Bz_arr(i,j,k);
+            const amrex::Real Bz_cc = Bz_arr(i,j,k);
 #endif
             return {Ey_cc * Bz_cc - Ez_cc * By_cc,
                     Ez_cc * Bx_cc - Ex_cc * Bz_cc,
