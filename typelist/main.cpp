@@ -1,9 +1,16 @@
-#define AMREX_USE_CXXABI
+#include <AMReX_Demangle.H>
 #include <AMReX_TypeList.H>
 #include <iostream>
 #undef NDEBUG
 #include <cassert>
 using namespace amrex;
+
+template<int ORD> void interp () { assert(0); }
+
+template<> void interp<1> () { std::cout << "interp<1>\n"; }
+template<> void interp<2> () { std::cout << "interp<2>\n"; }
+template<> void interp<4> () { std::cout << "interp<4>\n"; }
+
 int main(int argc, char* argv[])
 {
     auto tt = CartesianProduct(TypeList<char,int,long>{},
@@ -38,4 +45,26 @@ int main(int argc, char* argv[])
         }
     });
     assert(!r);
+
+    auto tp = TypeList<std::integral_constant<int,0>,
+                       std::integral_constant<int,1>>{}
+            + TypeList<std::integral_constant<int,2>,
+                       std::integral_constant<int,3>>{};
+    std::cout << "operator+: " << demangle(typeid(tp).name()) << "\n";
+
+    auto cp = CartesianProduct(TypeList<std::integral_constant<int,0>,
+                                        std::integral_constant<int,1>>{},
+                               TypeList<std::integral_constant<int,2>,
+                                        std::integral_constant<int,3>>{});
+    std::cout << "cp: " << demangle(typeid(cp).name()) << "\n";
+
+    int order = 2;
+     ForEach(TypeList<std::integral_constant<int,1>,
+                      std::integral_constant<int,2>,
+                      std::integral_constant<int,4>>{},
+             [&] (auto order_const) {
+                 if (order_const() == order) {
+                     interp<order_const()>();
+                 }
+             });
 }
