@@ -3,7 +3,7 @@
 #if defined(AMREX_USE_CUDA)
 #  include <cuda_runtime.h>
 #elif defined(AMREX_USE_HIP)
-#  include <hip/hip_runtime.h
+#  include <hip/hip_runtime.h>
 #endif
 
 #define AMREX_DEVICE_COMPILE (__CUDA_ARCH__ || __HIP_DEVICE_COMPILE__ || __SYCL_DEVICE_ONLY__)
