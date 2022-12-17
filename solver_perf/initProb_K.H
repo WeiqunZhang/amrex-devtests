@@ -81,3 +81,5 @@ void actual_init_abeclap (int i, int j, int k,
                    + std::cos(fpi*x) * std::cos(fpi*y) * std::cos(fpi*z));
     }
 }
+
+#endif

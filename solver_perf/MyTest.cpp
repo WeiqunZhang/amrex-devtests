@@ -34,7 +34,7 @@ void
 MyTest::readParameters ()
 {
     ParmParse pp;
-    pp.queryarr("n_cells", n_cells);
+    pp.query("n_cells", n_cells);
     pp.query("max_grid_size", max_grid_size);
 
     pp.query("prob_type", prob_type);
@@ -70,10 +70,14 @@ MyTest::initData ()
     grids.maxSize(max_grid_size);
     dmap.define(grids);
     solution.define(grids, dmap, 1, 1);
+    exact   .define(grids, dmap, 1, 1);
     rhs     .define(grids, dmap, 1, 0);
     if (prob_type == 2) {
         acoef.define(grids, dmap, 1, 0);
-        bcoef.define(grids, dmap, 1, 1);
+        for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
+            bcoef[idim].define(amrex::convert(grids,IntVect::TheDimensionVector(idim)),
+                               dmap, 1, 0);
+        }
     }
 
     if (prob_type == 1) {
@@ -83,4 +87,6 @@ MyTest::initData ()
     } else {
         amrex::Abort("Unknown prob_type "+std::to_string(prob_type));
     }
+
+    MultiFab::Copy(exact, solution, 0, 0, 1, 1);
 }
