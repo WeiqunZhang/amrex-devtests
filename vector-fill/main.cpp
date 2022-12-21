@@ -6,10 +6,10 @@
 using namespace amrex;
 
 struct Foo {
-    double x[5];
+    double x[9];
     int i;
     bool operator!= (Foo const& rhs) {
-        for (int j = 0; j < 5; ++j) {
+        for (int j = 0; j < 9; ++j) {
             if (this->x[j] != rhs.x[j]) return true;
         }
         return this->i != rhs.i;
@@ -44,6 +44,10 @@ int main(int argc, char* argv[])
                                a.x[2] = 3.3 + i;
                                a.x[3] = 4.4 + i;
                                a.x[4] = 5.5 + i;
+                               a.x[5] = 6.6 + i;
+                               a.x[6] = 7.7 + i;
+                               a.x[7] = 8.8 + i;
+                               a.x[8] = 9.9 + i;
                                a.i = 100 + i;
                            });
             Gpu::streamSynchronize();
@@ -58,6 +62,10 @@ int main(int argc, char* argv[])
                 a.x[2] = 3.3 + i;
                 a.x[3] = 4.4 + i;
                 a.x[4] = 5.5 + i;
+                a.x[5] = 6.6 + i;
+                a.x[6] = 7.7 + i;
+                a.x[7] = 8.8 + i;
+                a.x[8] = 9.9 + i;
                 a.i = 100 + i;
                 if (a != hv[i]) {
                     amrex::Abort("Gpu::fillAsync failed");
@@ -76,6 +84,10 @@ int main(int argc, char* argv[])
                 p[i].x[2] = 3.3 + i;
                 p[i].x[3] = 4.4 + i;
                 p[i].x[4] = 5.5 + i;
+                p[i].x[5] = 6.6 + i;
+                p[i].x[6] = 7.7 + i;
+                p[i].x[7] = 8.8 + i;
+                p[i].x[8] = 9.9 + i;
                 p[i].i = 100 + i;
             });
             Gpu::streamSynchronize();
