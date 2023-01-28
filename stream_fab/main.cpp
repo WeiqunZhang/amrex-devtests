@@ -145,10 +145,19 @@ int main (int argc, char* argv[])
 
         char label[4][12] = {"Copy:      ", "Scale:     ", "Add:       ", "Triad:     "};
 
-        std::printf("Function    Best Rate MB/s  Avg time     Min time     Max time\n");
-        for (int j = 0; j < 4; ++j) {
-            std::printf("%s%12.1f  %11.6f  %11.6f  %11.6f\n", label[j],
-                        1.0e-06 * bytes[j]/mintime[j], avgtime[j], mintime[j], maxtime[j]);
+        for (int iproc = 0; iproc < ParallelDescriptor::NProcs(); ++iproc) {
+            ParallelDescriptor::Barrier();
+            if (iproc == ParallelDescriptor::MyProc()) {
+                if (ParallelDescriptor::NProcs() > 1) {
+                    std::cout << "Proc. " << iproc << std::endl;
+                }
+                std::printf("Function    Best Rate MB/s  Avg time     Min time     Max time\n");
+                for (int j = 0; j < 4; ++j) {
+                    std::printf("%s%12.1f  %11.6f  %11.6f  %11.6f\n", label[j],
+                                1.0e-06 * bytes[j]/mintime[j], avgtime[j], mintime[j], maxtime[j]);
+                }
+                std::cout << std::endl;
+            }
         }
     }
     amrex::Finalize();
