@@ -73,7 +73,10 @@ void stream_triad (Gpu::DeviceVector<Real>& av, Gpu::DeviceVector<Real> const& b
 
 int main (int argc, char* argv[])
 {
-    amrex::Initialize(argc,argv);
+    amrex::Initialize(argc,argv,true,MPI_COMM_WORLD, [] () {
+        ParmParse pp("amrex");
+        pp.add("the_arena_is_managed", 0);
+    });
     amrex::SetVerbose(0);
     {
         amrex::Long stream_array_size = 134217728;

@@ -9,6 +9,8 @@ USE_CUDA  = FALSE
 USE_DPCPP = FALSE
 USE_HIP   = FALSE
 
+TINY_PROFILE = FALSE
+
 AMREX_HOME = ../../amrex
 
 include $(AMREX_HOME)/Tools/GNUMake/Make.defs
