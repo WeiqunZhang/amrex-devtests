@@ -89,38 +89,38 @@ int main (int argc, char* argv[])
         Real scalar = 3.0;
 
         stream_init(av,bv,cv);
-        Gpu::synchronize();
+        Gpu::streamSynchronize();
 
         // warm up
         stream_copy(av,cv);
         stream_scale(bv,cv,scalar);
         stream_add(av,bv,cv);
         stream_triad(av,bv,cv,scalar);
-        Gpu::synchronize();
+        Gpu::streamSynchronize();
 
         stream_init(av,bv,cv);
-        Gpu::synchronize();
+        Gpu::streamSynchronize();
 
         Array2D<double,0,3,0,NTIMES-1,Order::C> times;
         for (int it = 0; it < NTIMES; ++it) {
             Real t = amrex::second();
             stream_copy(av, cv);
-            Gpu::synchronize();
+            Gpu::streamSynchronize();
             times(0,it) = amrex::second() - t;
 
             t = amrex::second();
             stream_scale(bv, cv, scalar);
-            Gpu::synchronize();
+            Gpu::streamSynchronize();
             times(1,it) = amrex::second() - t;
 
             t = amrex::second();
             stream_add(av, bv, cv);
-            Gpu::synchronize();
+            Gpu::streamSynchronize();
             times(2,it) = amrex::second() - t;
 
             t = amrex::second();
             stream_triad(av, bv, cv, scalar);
-            Gpu::synchronize();
+            Gpu::streamSynchronize();
             times(3,it) = amrex::second() - t;
         }
 
