@@ -91,7 +91,7 @@ void test_reduce_sum (BoxArray const& ba, DistributionMapping const& dm,
             twall.push_back(t1-t0);
         }
     }
-#elif defined(AMREX_USE_DPCPP)
+#elif defined(AMREX_USE_SYCL)
     for (int i = 0; i < 2; ++i) {
         double t0 = amrex::second();
 

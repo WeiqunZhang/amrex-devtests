@@ -88,7 +88,7 @@ void test_reduce_sum (int npts)
     }
     twall.push_back(ttmp);
 
-#elif defined(AMREX_USE_DPCPP)
+#elif defined(AMREX_USE_SYCL)
 
     ttmp = 1.e6;
     for (int n = 0; n < ntests; ++n) {
@@ -296,7 +296,7 @@ void test_reduce_sum (int npts)
         // This avoids memcpy or managed momory. But due to a bug, we have
         // to store the result in device memory and then memcpy it back to
         // the host. (Not sure whether or not the bug has been fixed.)
-#ifndef AMREX_NO_DPCPP_REDUCE_WORKAROUND
+#ifndef AMREX_NO_SYCL_REDUCE_WORKAROUND
         T* presult = (T*)MY_ALLOC_DEVICE(sizeof(T));
 #else
         T* presult = final_result;
@@ -352,7 +352,7 @@ void test_reduce_sum (int npts)
             });
         });
 
-#ifndef AMREX_NO_DPCPP_REDUCE_WORKAROUND
+#ifndef AMREX_NO_SYCL_REDUCE_WORKAROUND
         q.submit([&] (sycl::handler& h) { h.memcpy(final_result, presult, sizeof(T)); });
 #endif
 
@@ -363,7 +363,7 @@ void test_reduce_sum (int npts)
         // free memory
         MY_FREE_DEVICE(group_result);
         MY_FREE_HOST(final_result);
-#ifndef AMREX_NO_DPCPP_REDUCE_WORKAROUND
+#ifndef AMREX_NO_SYCL_REDUCE_WORKAROUND
         MY_FREE_DEVICE(presult);
 #endif
 

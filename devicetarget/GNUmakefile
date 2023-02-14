@@ -6,8 +6,8 @@ else ifeq ($(CXX),nvc++)
   CXXFLAGS = -O3 --std=c++17 -cuda -gpu=cc70 -DAMREX_USE_CUDA
 else ifeq ($(CXX),hipcc)
   CXXFLAGS = -O3 --std=c++17 -m64 --amdgpu-target=gfx90a -DAMREX_USE_HIP
-else ifeq ($(CXX),dpcpp)
-  CXXFLAGS = -O3 --std=c++17 -fsycl -DAMREX_USE_DPCPP
+else ifeq ($(CXX),sycl)
+  CXXFLAGS = -O3 --std=c++17 -fsycl -DAMREX_USE_SYCL
 else
   $(error Unknown CXX)
 endif

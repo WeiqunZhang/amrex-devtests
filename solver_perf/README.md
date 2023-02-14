@@ -1,5 +1,5 @@
 
-Compile with `make -j16 USE_[CUDA|DPCPP|HIP]=TRUE`, for CUDA, SYCL and HIP,
+Compile with `make -j16 USE_[CUDA|SYCL|HIP]=TRUE`, for CUDA, SYCL and HIP,
 respectively.
 
 The default size is `n_cells="512 512 512"`, which is usually appropriate

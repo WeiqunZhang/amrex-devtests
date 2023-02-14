@@ -231,7 +231,7 @@ void interpolation (Box const& box, Array4<Real> const& fine, Array4<Real const>
 
 #if defined(AMREX_USE_GPU)
 
-#if defined(AMREX_USE_DPCPP)
+#if defined(AMREX_USE_SYCL)
 #define HPMG_SYNCTHREADS item.barrier(sycl::access::fence_space::global_and_local)
 #else
 #define HPMG_SYNCTHREADS __syncthreads()
@@ -244,7 +244,7 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
                       FGS&& fgs, FRES&& fres)
 {
     static_assert(n_cell_single*n_cell_single <= 1024, "n_cell_single is too big");
-#if defined(AMREX_USE_DPCPP)
+#if defined(AMREX_USE_SYCL)
     amrex::launch(1, 1024, Gpu::gpuStream(),
     [=] (sycl::nd_item<1> const& item) noexcept
 #else
@@ -257,7 +257,7 @@ void bottomsolve_gpu (Real dx0, Real dy0, Array4<Real> const* acf,
         int lenx = cor[0].end.x - cor[0].begin.x;
         int leny = cor[0].end.y - cor[0].begin.y;
         int ncells = lenx*leny;
-#if defined(AMREX_USE_DPCPP)
+#if defined(AMREX_USE_SYCL)
         const int icell = item.get_local_linear_id();
 #else
         const int icell = threadIdx.x;
@@ -767,7 +767,7 @@ MultiGrid::average_down_acoef (FArrayBox const& a_acf)
         Array4<Real> const* acf = m_acf_a;
         int nlevels = m_num_single_block_levels;
 
-#if defined(AMREX_USE_DPCPP)
+#if defined(AMREX_USE_SYCL)
         amrex::launch(1, 1024, Gpu::gpuStream(),
         [=] (sycl::nd_item<1> const& item) noexcept
 #else
@@ -779,7 +779,7 @@ MultiGrid::average_down_acoef (FArrayBox const& a_acf)
                 const int lenx = acf[ilev].end.x - acf[ilev].begin.x;
                 const int leny = acf[ilev].end.y - acf[ilev].begin.y;
                 const int ncells = lenx*leny;
-#if defined(AMREX_USE_DPCPP)
+#if defined(AMREX_USE_SYCL)
                 for (int icell = item.get_local_range(0)*item.get_group_linear_id()
                          + item.get_local_linear_id(),
                          stride = item.get_local_range(0)*item.get_group_range(0);

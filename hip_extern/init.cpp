@@ -6,7 +6,7 @@
 #  define AMREX_GPU_MEMCPY_TO_SYMBOL(d,h,n) cudaMemcpyToSymbol(d, h, n);
 #elif defined(AMREX_USE_HIP)
 #  define AMREX_GPU_MEMCPY_TO_SYMBOL(d,h,n) hipMemcpyToSymbol(d, h, n);
-#elif defined(AMREX_USE_DPCPP)
+#elif defined(AMREX_USE_SYCL)
 #  define AMREX_GPU_MEMCPY_TO_SYMBOL(d,h,n) 
 #else
 #  define AMREX_GPU_MEMCPY_TO_SYMBOL(d,h,n) std::memcpy(&d, h, n);

@@ -31,7 +31,7 @@ int test_scan (unsigned int N, bool debug)
 
     Gpu::DeviceVector<T> bm(N);
     T* dpbm = bm.data();
-#if defined(AMREX_USE_DPCPP) && !defined(AMREX_USE_ONEDPL)
+#if defined(AMREX_USE_SYCL) && !defined(AMREX_USE_ONEDPL)
     Gpu::PinnedVector<T> hbm(N);
     Gpu::dtoh_memcpy(hbm.data(), dp, sizeof(T)*N);
     Gpu::synchronize();

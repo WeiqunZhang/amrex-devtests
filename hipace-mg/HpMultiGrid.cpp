@@ -370,8 +370,8 @@ MultiGrid::bottomsolve ()
     Array4<amrex::Real> const* cor = m_cor_a;
     Array4<amrex::Real> const* rescor = m_rescor_a;
     int nlevs = m_num_single_block_levels;
-#if defined(AMREX_USE_DPCPP)
-    amrex::Abort("DPCPP todo");
+#if defined(AMREX_USE_SYCL)
+    amrex::Abort("SYCL todo");
 #else
     amrex::launch(1, AMREX_GPU_MAX_THREADS, 0, Gpu::gpuStream(),
     [=] AMREX_GPU_DEVICE () noexcept
@@ -535,8 +535,8 @@ MultiGrid::average_down_acoef ()
     }
 
 #if defined(AMREX_USE_GPU)
-#if defined (AMREX_USE_DPCPP)
-    amrex::Abort("DPCPP todo");
+#if defined (AMREX_USE_SYCL)
+    amrex::Abort("SYCL todo");
 #endif
 
     if (m_num_single_block_levels > 1) {
