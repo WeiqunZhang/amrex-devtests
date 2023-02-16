@@ -227,7 +227,7 @@ void test_reduce_sum (int npts)
         auto& ctx = amrex::Gpu::Device::syclContext();
         auto& q   = amrex::Gpu::Device::streamQueue(); // AMReX uses orderd queue.
 
-        constexpr int sub_group_size = 16;
+        constexpr int sub_group_size = 32;
         constexpr int group_size = 256;
         constexpr int nitems_per_thread = 4;  // Each thread works on 4 items
 
