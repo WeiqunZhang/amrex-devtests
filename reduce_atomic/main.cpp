@@ -9,21 +9,23 @@ void test_reduce_sum (Gpu::DeviceVector<float> const& dv)
 {
     double t1, t2;
 
-    {
-        auto sum = Reduce::Sum(dv.size(), dv.data());
-        amrex::Print() << "    Reduce::Sum          = " << sum << std::endl;
-    }
+    for (int k = 0; k < 2; ++k)
     {
         double t0 = amrex::second();
         auto sum = Reduce::Sum(dv.size(), dv.data());
         t1 = amrex::second()-t0;
+        if (k == 0) {
+            amrex::Print() << "    Reduce::Sum          = " << sum << std::endl;
+        }
     }
 
     Gpu::PinnedVector<float> hsum(1,0.0f);
     Gpu::DeviceVector<float> dsum(1,0.0f);
     float * sp = dsum.data();
     float const* dp = dv.data();
+    for (int k = 0; k < 2; ++k)
     {
+        double t0 = amrex::second();
         amrex::ParallelFor(Gpu::KernelInfo().setReduction(true), dv.size(),
         [=] AMREX_GPU_DEVICE (int i, Gpu::Handler const& h) noexcept
         {
@@ -31,17 +33,10 @@ void test_reduce_sum (Gpu::DeviceVector<float> const& dv)
         });
         Gpu::copy(Gpu::deviceToHost, dsum.begin(), dsum.end(), hsum.begin());
         Gpu::synchronize();
-        amrex::Print() << "    Gpu::deviceReduceSum = " << hsum[0] << std::endl;
-    }
-    {
-        double t0 = amrex::second();
-        amrex::ParallelFor(Gpu::KernelInfo().setReduction(true), dv.size(),
-        [=] AMREX_GPU_DEVICE (int i, Gpu::Handler const& h) noexcept
-        {
-            Gpu::deviceReduceSum(sp, dp[i], h);
-        });
-        Gpu::synchronize();
         t2 = amrex::second()-t0;
+        if (k == 0) {
+            amrex::Print() << "    Gpu::deviceReduceSum = " << hsum[0] << std::endl;
+        }
     }
 
     amrex::Print() << "    Kernel run time is " << std::scientific << t1 << " " << t2 << std::endl;
