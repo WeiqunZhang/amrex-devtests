@@ -44,12 +44,17 @@ int main(int argc, char* argv[])
                  return {a[box_no](i,j,k), k};
              });
 
-        auto const& ar = r.const_array();
-        AMREX_LOOP_3D(r.box(), i, j, k,
-        {
-            std::cout << "   r("<<i<<","<<j<<","<<k<<") = " << ar(i,j,k).first()
-                      << " " << ar(i,j,k).second() << "\n";
-        });
+        ParallelReduce::Max(r.dataPtr(), r.size(), 0,
+                            ParallelDescriptor::Communicator());
+
+        if (ParallelDescriptor::MyProc() == 0) {
+            auto const& ar = r.const_array();
+            AMREX_LOOP_3D(r.box(), i, j, k,
+            {
+                std::cout << "   r("<<i<<","<<j<<","<<k<<") = " << ar(i,j,k).first()
+                          << " " << ar(i,j,k).second() << "\n";
+            });
+        }
     }
     amrex::Finalize();
 }
