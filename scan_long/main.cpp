@@ -32,12 +32,17 @@ struct BlockStatus
     T get_aggregate() const { return aggregate; }
 
     STVA<T> read () volatile {
+        constexpr auto mo = sycl::memory_order::relaxed;
+        constexpr auto ms = sycl::memory_scope::device;
+        constexpr auto as = sycl::access::address_space::global_space;
         if (status == 'x') {
             return {'x', 0};
         } else if (status == 'a') {
-            return {'a', aggregate};
+            sycl::atomic_ref<T,mo,ms,as> ar{const_cast<T&>(aggregate)};
+            return {'a', ar.load()};
         } else {
-            return {'p', inclusive};
+            sycl::atomic_ref<T,mo,ms,as> ar{const_cast<T&>(inclusive)};
+            return {'p', ar.load()};
         }
     }
 
