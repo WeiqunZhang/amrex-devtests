@@ -48,22 +48,22 @@ int main(int argc, char* argv[])
                 epsilon = std::numeric_limits<ParticleReal>::epsilon()
                     * std::max(ParticleReal(geom.CellSize(idim)),std::abs(rhi[idim]))
                     * ParticleReal(2.0);
-                auto rhim = rhi[idim] - epsilon;
+                auto rhip = rhi[idim] + epsilon;
                 bool pass = (index(rlom)      == -1)
                     &&      (index(rlo[idim]) == 0 )
-                    &&      (index(rhim)      == ncells-1)
-                    &&      (index(rhi[idim]) == ncells);
+                    &&      (index(rhi[idim]) == ncells-1)
+                    &&      (index(rhip)      == ncells);
                 if (!pass) {
                     amrex::Print() << "Geometry: " << geom << std::endl;
                     amrex::Print().SetPrecision(17)
                         << " rlo[" << idim << "] = " << rlo[idim]
                         << " rhi[" << idim << "] = " << rhi[idim]
                         << " rlo_minus = " << rlom
-                        << " rhi_minus = " << rhim << "\n";
+                        << " rhi_plus  = " << rhip << "\n";
                     amrex::Print() << " ilo = " << index(rlo[idim])
-                                   << " ihi = " << index(rhim)
+                                   << " ihi = " << index(rhi[idim])
                                    << " ilo-1 = " << index(rlom)
-                                   << " ihi+1 = " << index(rhi[idim])
+                                   << " ihi+1 = " << index(rhip)
                                    << "\n";
                     //amrex::Abort("Failed");
                 }
