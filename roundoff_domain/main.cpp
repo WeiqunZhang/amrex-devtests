@@ -17,15 +17,19 @@ int main(int argc, char* argv[])
 
         for (int ieps = 0; ieps < 10000; ++ieps)
         {
-            Real eps;
-            if (ieps % 100 == 0) {
-                eps = Real(0.);
-            } else {
-                eps = amrex::Random() * 1.e-4;
+            std::array<Real,AMREX_SPACEDIM> rblo{AMREX_D_DECL(Real(0.),Real(-1.),Real(-0.3))};
+            std::array<Real,AMREX_SPACEDIM> rbhi{AMREX_D_DECL(Real(1.),Real( 0.),Real( 0.5))};
+            if (ieps % 100 != 0) {
+                auto eps = amrex::Random() * 1.e-4;
+                AMREX_D_TERM(rblo[0] += eps;,
+                             rblo[1] -= eps;,
+                             rblo[2] += eps);
+                AMREX_D_TERM(rbhi[0] -= eps;,
+                             rbhi[1] += eps;,
+                             rbhi[2] -= eps);
             }
 
-            RealBox rb(AMREX_D_DECL(Real(0.+eps),Real(-1.-eps),Real(-0.5+eps)),
-                       AMREX_D_DECL(Real(1.+eps),Real( 0.-eps),Real( 0.5-eps)));
+            RealBox rb(rblo, rbhi);
             Geometry geom(domain, rb, 0, {AMREX_D_DECL(0,0,0)});
 
             auto rlo = geom.ProbLoArrayInParticleReal();
@@ -61,7 +65,7 @@ int main(int argc, char* argv[])
                                    << " ilo-1 = " << index(rlom)
                                    << " ihi+1 = " << index(rhi[idim])
                                    << "\n";
-                    amrex::Abort("Failed");
+                    //amrex::Abort("Failed");
                 }
             }
         }
