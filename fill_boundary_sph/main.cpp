@@ -82,11 +82,13 @@ int main(int argc, char* argv[])
 
         mf.setDomainBndry(-1, geom);
 
-        SphThetaPhiRMapping index_mapping{domain};
+        SphThetaPhiRIndexMapping index_mapping(domain);
+        //SphThetaPhiRComponentMapping comp_mapping(domain, 1); // if velocity starts at component 1
+        NonLocalBC::Identity comp_mapping{};
 
         auto cmd = makeFillBoundaryMetaData(mf, mf.nGrowVect(), geom, index_mapping);
         // cmd can be cached, should be if it's used more than once.
-        FillBoundary(mf, cmd, 0, mf.nComp(), index_mapping);
+        FillBoundary(mf, cmd, 0, mf.nComp(), index_mapping, comp_mapping);
 
         int nx = domain.length(0);
         int ny = domain.length(1);
