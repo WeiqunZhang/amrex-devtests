@@ -16,7 +16,7 @@ MyTest::initProb ()
 #endif
     for (MFIter mfi(rhs[0], TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
-        const Box& gbx = mfi.grownnodaltilebox(1);
+        const Box& gbx = mfi.tilebox(IntVect(1),IntVect(1));
         GpuArray<Array4<Real>,AMREX_SPACEDIM> rhsfab
             {AMREX_D_DECL(rhs[0].array(mfi),
                           rhs[1].array(mfi),

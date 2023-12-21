@@ -1,0 +1,14 @@
+
+n_cells = 256
+max_grid_size = 64
+
+verbose = 2
+bottom_verbose = 2
+max_coarsening_level = 0
+
+alpha_over_dx2 = 0.1
+beta = 1.0
+
+amrex.fpe_trap_invalid=1
+amrex.fpe_train_zero=1
+amrex.trap_overflow=1

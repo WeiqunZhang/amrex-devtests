@@ -1,8 +1,7 @@
 #ifndef MY_TEST_H_
 #define MY_TEST_H_
 
-#include <AMReX_MLMG.H>
-#include <AMReX_MLCurlCurl.H>
+#include <AMReX_MultiFab.H>
 
 class MyTest
 {
@@ -20,7 +19,7 @@ private:
     void readParameters ();
     void initData ();
 
-    std::array<int,AMREX_SPACEDIM> n_cells{AMREX_D_DECL(128,128,128)};
+    int n_cell = 128;
     int max_grid_size = 64;
 
     // For MLMG solver
