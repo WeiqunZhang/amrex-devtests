@@ -7,28 +7,28 @@ using namespace amrex;
 void
 MyTest::initProb ()
 {
-    for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-        exact[idim].setVal(0.0);
-        rhs  [idim].setVal(0.0);
-    }
-
-#if 0
     const auto prob_lo = geom.ProbLoArray();
-    const auto prob_hi = geom.ProbHiArray();
     const auto dx      = geom.CellSizeArray();
+    const auto a = alpha;
+    const auto b = beta;
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
-    for (MFIter mfi(rhs, TilingIfNotGPU()); mfi.isValid(); ++mfi)
+    for (MFIter mfi(rhs[0], TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
-        const Box& gbx = mfi.growntilebox(1);
-        auto rhsfab = rhs.array(mfi);
-        auto solfab = solution.array(mfi);
+        const Box& gbx = mfi.grownnodaltilebox(1);
+        GpuArray<Array4<Real>,AMREX_SPACEDIM> rhsfab
+            {AMREX_D_DECL(rhs[0].array(mfi),
+                          rhs[1].array(mfi),
+                          rhs[2].array(mfi))};
+        GpuArray<Array4<Real>,AMREX_SPACEDIM> solfab
+            {AMREX_D_DECL(solution[0].array(mfi),
+                          solution[1].array(mfi),
+                          solution[2].array(mfi))};
         amrex::ParallelFor(gbx,
         [=] AMREX_GPU_DEVICE (int i, int j, int k) noexcept
         {
-            actual_init_poisson(i,j,k,rhsfab,solfab,prob_lo,prob_hi,dx);
+            actual_init_prob(i,j,k,rhsfab,solfab,prob_lo,dx,a,b);
         });
     }
-#endif
 }

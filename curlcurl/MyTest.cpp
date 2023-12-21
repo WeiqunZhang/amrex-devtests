@@ -83,13 +83,13 @@ MyTest::initData ()
         itype[idim] = 0;
         BoxArray const& ba = amrex::convert(grids, itype);
         solution[idim].define(ba,dmap,1,1);
-        exact   [idim].define(ba,dmap,1,1);
-        rhs     [idim].define(ba,dmap,1,1);
+        exact   [idim].define(ba,dmap,1,0);
+        rhs     [idim].define(ba,dmap,1,0);
     }
 
     initProb();
 
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
-        solution[idim].LocalCopy(exact[idim], 0, 0, 1, IntVect(1));
+        exact[idim].LocalCopy(solution[idim], 0, 0, 1, IntVect(0));
     }
 }
