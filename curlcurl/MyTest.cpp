@@ -39,7 +39,6 @@ MyTest::solve ()
     mlmg.setMaxIter(max_iter);
     mlmg.setVerbose(verbose);
     mlmg.setBottomVerbose(bottom_verbose);
-    // mlmg.setBottomSolver(BottomSolver::smoother);
     for (auto& mf : solution) {
         mf.setVal(Real(0));
     }
