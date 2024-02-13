@@ -41,11 +41,29 @@ int main(int argc, char* argv[])
         }
 
 #ifdef AMREX_USE_GPU
+#ifdef AMREX_USE_SYCL
+        Gpu::HostVector<std::uint64_t> ha(N);
+        Gpu::HostVector<std::uint64_t> hb(N);
+        Gpu::HostVector<std::uint64_t> hc(N);
+        Gpu::copyAsync(Gpu::deviceToHost, a.begin(), a.end(), ha.begin());
+        Gpu::copyAsync(Gpu::deviceToHost, b.begin(), b.end(), hb.begin());
+        Gpu::copyAsync(Gpu::deviceToHost, c.begin(), c.end(), hc.begin());
+        Gpu::streamSynchronize();
+        int error = 0;
+        for (int i = 0; i < N; ++i) {
+            auto tmp = amrex::UInt128_t(pa[i]) * amrex::UInt128_t(pb[i]);
+            auto r = std::uint64_t(tmp >> 64);
+            if (r != pc[i]) {
+                ++error;
+            }
+        }
+#else
         auto error = Reduce::Sum<int>(N, [=] AMREX_GPU_DEVICE (int i) {
             auto tmp = amrex::UInt128_t(pa[i]) * amrex::UInt128_t(pb[i]);
             auto r = std::uint64_t(tmp >> 64);
             return int(r != pc[i]);
         });
+#endif
         if (error) {
             amrex::Print() << "  amrex::umulhi failed" << std::endl;
         }
