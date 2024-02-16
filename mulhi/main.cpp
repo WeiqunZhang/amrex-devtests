@@ -49,11 +49,14 @@ int main(int argc, char* argv[])
         Gpu::copyAsync(Gpu::deviceToHost, b.begin(), b.end(), hb.begin());
         Gpu::copyAsync(Gpu::deviceToHost, c.begin(), c.end(), hc.begin());
         Gpu::streamSynchronize();
+        auto* pha = ha.data();
+        auto* phb = hb.data();
+        auto* phc = hc.data();
         int error = 0;
         for (int i = 0; i < N; ++i) {
-            auto tmp = amrex::UInt128_t(pa[i]) * amrex::UInt128_t(pb[i]);
+            auto tmp = amrex::UInt128_t(pha[i]) * amrex::UInt128_t(phb[i]);
             auto r = std::uint64_t(tmp >> 64);
-            if (r != pc[i]) {
+            if (r != phc[i]) {
                 ++error;
             }
         }
