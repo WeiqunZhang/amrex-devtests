@@ -65,11 +65,11 @@ int main(int argc, char* argv[])
 
         lusolver.define(A);
 
-        Array<Real,6> b{1.0,-1.0,2.0,-3.0,4.0,-5.0};
+        Array<Real,6> b{1.0,-1.0,2.0,-2.0,3.0,-3.0};
         Array<Real,6> x;
         lusolver(x.data(), b.data());
 
-        amrex::Print() << "Matrix:\n";
+        amrex::Print() << "A:\n";
         for (int i = 0; i < 6; ++i) {
             for (int j = 0; j < 6; ++j) {
                 std::cout << "   " << A(i,j) << ", ";
@@ -83,21 +83,57 @@ int main(int argc, char* argv[])
         }
         amrex::Print() << std::endl;
 
-        amrex::Print() << "x:";
+        amrex::Print() << "Using LU, x:";
         for (int j = 0; j < 6; ++j) {
-            amrex::Print() << "   " << x[j] << ", ";
+            amrex::Print().SetPrecision(17) << "   " << x[j] << ", ";
         }
         amrex::Print() << std::endl;
 
-        amrex::Print() << "A*x: ";
+        amrex::Print() << "Using LU, A*x: ";
         for (int i = 0; i < 6; ++i) {
             Real r = 0.0;
             for (int j = 0; j < 6; ++j) {
                 r += A(i,j) * x[j];
             }
-            amrex::Print() << "   " << r << ", ";
+            amrex::Print().SetPrecision(17) << "   " << r << ", ";
         }
         amrex::Print() <<  std::endl;
+
+        auto IA = lusolver.invert();
+        amrex::Print() << "A^-1:\n";
+        for (int i = 0; i < 6; ++i) {
+            for (int j = 0; j < 6; ++j) {
+                std::cout << "   " << IA(i,j) << ", ";
+            }
+            std::cout << std::endl;
+        }
+
+        Array<Real,6> x2;
+        for (int i = 0; i < 6; ++i) {
+            Real r = 0.0;
+            for (int j = 0; j < 6; ++j) {
+                r += IA(i,j) * b[j];
+            }
+            x2[i] = r;
+        }
+
+        amrex::Print() << "Using A^-1, x:";
+        for (int j = 0; j < 6; ++j) {
+            amrex::Print().SetPrecision(17) << "   " << x2[j] << ", ";
+        }
+        amrex::Print() << std::endl;
+
+        amrex::Print() << "Using A^-1, A*x: ";
+        for (int i = 0; i < 6; ++i) {
+            Real r = 0.0;
+            for (int j = 0; j < 6; ++j) {
+                r += A(i,j) * x2[j];
+            }
+            amrex::Print().SetPrecision(17) << "   " << r << ", ";
+        }
+        amrex::Print() <<  std::endl;
+
+        amrex::Print() << "Determinant of A: " << lusolver.determinant() << std::endl;
     }
     amrex::Finalize();
 }
