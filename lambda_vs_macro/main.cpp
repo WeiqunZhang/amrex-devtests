@@ -222,77 +222,80 @@ void testParallelFor()
         }
     }
 
-    BL_PROFILE_VAR("Deferred Correction Function", amrex_parallel_for_fn);
+    {
+        BL_PROFILE("lambda");
 
-    for (int i = 0; i < 100; ++i) {
-        const auto& dxinv = geom.InvCellSizeArray();
-        const Real blend_factor = 0.5;
-        AMREX_D_TERM(auto& uxface = velface[0];,
-                    auto& uyface = velface[1];,
-                    auto& uzface = velface[2];);
+        for (int i = 0; i < 100; ++i) {
+            const auto& dxinv = geom.InvCellSizeArray();
+            const Real blend_factor = 0.5;
+            AMREX_D_TERM(auto& uxface = velface[0];,
+                         auto& uyface = velface[1];,
+                         auto& uzface = velface[2];);
 
-        MFItInfo mfi_info;
-        if (Gpu::notInLaunchRegion()) { mfi_info.EnableTiling().SetDynamic(true); }
+            MFItInfo mfi_info;
+            if (Gpu::notInLaunchRegion()) { mfi_info.EnableTiling().SetDynamic(true); }
 #ifdef AMREX_USE_OMP
 #pragma omp parallel if (Gpu::notInLaunchRegion())
 #endif
-        for (MFIter mfi(vel, mfi_info); mfi.isValid(); ++mfi)
-        {
-            const Box& bx = mfi.tilebox();
-            const auto& vel_fab = vel.const_array(mfi);
-            const auto& gp_fab = gp.const_array(mfi);
-            const auto& Usrc_fab = Usrc.array(mfi);
-
-            AMREX_D_TERM(const auto& uxface_fab = uxface.const_array(mfi);,
-                        const auto& uyface_fab = uyface.const_array(mfi);,
-                        const auto& uzface_fab = uzface.const_array(mfi););
-            amrex::ParallelFor(
-                bx, AMREX_SPACEDIM,
-                [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept -> void {
-                    amrex::Real deferred_correction_term = deferred_correction<HOScheme::TVD, TVDScheme::UMIST>(i, j, k, n,
-                            AMREX_D_DECL(uxface_fab, uyface_fab, uzface_fab),
-                            vel_fab, dxinv, blend_factor);
-                    Usrc_fab(i, j, k, n) = - gp_fab(i, j, k, n) + deferred_correction_term;
-                }
-            );
-        }
-    }
-    BL_PROFILE_VAR_STOP(amrex_parallel_for_fn);
-
-    BL_PROFILE_VAR("Deferred Correction Macro", amrex_parallel_for_macro);
-
-    for (int i = 0; i < 100; ++i) {
-        const auto& dxinv = geom.InvCellSizeArray();
-        const Real blend_factor = 0.5;
-        AMREX_D_TERM(auto& uxface = velface[0];,
-                    auto& uyface = velface[1];,
-                    auto& uzface = velface[2];);
-
-        MFItInfo mfi_info;
-        if (Gpu::notInLaunchRegion()) { mfi_info.EnableTiling().SetDynamic(true); }
-#ifdef AMREX_USE_OMP
-#pragma omp parallel if (Gpu::notInLaunchRegion())
-#endif
-        for (MFIter mfi(vel, mfi_info); mfi.isValid(); ++mfi)
-        {
-            const Box& bx = mfi.tilebox();
-            const auto& vel_fab = vel.const_array(mfi);
-            const auto& gp_fab = gp.const_array(mfi);
-            const auto& Usrc_fab = Usrc.array(mfi);
-
-            AMREX_D_TERM(const auto& uxface_fab = uxface.const_array(mfi);,
-                        const auto& uyface_fab = uyface.const_array(mfi);,
-                        const auto& uzface_fab = uzface.const_array(mfi););
-
-            AMREX_HOST_DEVICE_PARALLEL_FOR_4D(bx, AMREX_SPACEDIM, i, j, k, n,
+            for (MFIter mfi(vel, mfi_info); mfi.isValid(); ++mfi)
             {
-                amrex::Real deferred_correction_term = (deferred_correction<HOScheme::TVD, TVDScheme::UMIST>(i, j, k, n,
-                        AMREX_D_DECL(uxface_fab, uyface_fab, uzface_fab), vel_fab, dxinv, blend_factor));
-                Usrc_fab(i, j, k, n) = - gp_fab(i, j, k, n) + deferred_correction_term;
-            });
+                const Box& bx = mfi.tilebox();
+                const auto& vel_fab = vel.const_array(mfi);
+                const auto& gp_fab = gp.const_array(mfi);
+                const auto& Usrc_fab = Usrc.array(mfi);
+
+                AMREX_D_TERM(const auto& uxface_fab = uxface.const_array(mfi);,
+                             const auto& uyface_fab = uyface.const_array(mfi);,
+                             const auto& uzface_fab = uzface.const_array(mfi););
+                amrex::ParallelFor(
+                    bx, AMREX_SPACEDIM,
+                    [=] AMREX_GPU_DEVICE (int i, int j, int k, int n) noexcept
+                    {
+                        amrex::Real deferred_correction_term = deferred_correction<HOScheme::TVD, TVDScheme::UMIST>
+                            (i, j, k, n, AMREX_D_DECL(uxface_fab, uyface_fab, uzface_fab),
+                             vel_fab, dxinv, blend_factor);
+                        Usrc_fab(i, j, k, n) = - gp_fab(i, j, k, n) + deferred_correction_term;
+                    });
+            }
         }
     }
-    BL_PROFILE_VAR_STOP(amrex_parallel_for_macro);
+
+    {
+        BL_PROFILE("macro");
+
+        for (int i = 0; i < 100; ++i) {
+            const auto& dxinv = geom.InvCellSizeArray();
+            const Real blend_factor = 0.5;
+            AMREX_D_TERM(auto& uxface = velface[0];,
+                         auto& uyface = velface[1];,
+                         auto& uzface = velface[2];);
+
+            MFItInfo mfi_info;
+            if (Gpu::notInLaunchRegion()) { mfi_info.EnableTiling().SetDynamic(true); }
+#ifdef AMREX_USE_OMP
+#pragma omp parallel if (Gpu::notInLaunchRegion())
+#endif
+            for (MFIter mfi(vel, mfi_info); mfi.isValid(); ++mfi)
+            {
+                const Box& bx = mfi.tilebox();
+                const auto& vel_fab = vel.const_array(mfi);
+                const auto& gp_fab = gp.const_array(mfi);
+                const auto& Usrc_fab = Usrc.array(mfi);
+
+                AMREX_D_TERM(const auto& uxface_fab = uxface.const_array(mfi);,
+                             const auto& uyface_fab = uyface.const_array(mfi);,
+                             const auto& uzface_fab = uzface.const_array(mfi););
+
+                AMREX_HOST_DEVICE_PARALLEL_FOR_4D(bx, AMREX_SPACEDIM, i, j, k, n,
+                {
+                    amrex::Real deferred_correction_term = (deferred_correction<HOScheme::TVD, TVDScheme::UMIST>
+                        (i, j, k, n, AMREX_D_DECL(uxface_fab, uyface_fab, uzface_fab),
+                         vel_fab, dxinv, blend_factor));
+                    Usrc_fab(i, j, k, n) = - gp_fab(i, j, k, n) + deferred_correction_term;
+                });
+            }
+        }
+    }
 }
 
 int main(int argc, char* argv[])
