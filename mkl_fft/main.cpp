@@ -149,6 +149,36 @@ int main (int argc, char* argv[])
             std::ofstream ofs("cfab"+std::to_string(ndim));
             resultfab.writeOn(ofs);
         }
+
+        // Backward
+        FArrayBox rfab2(rfab.box());
+
+#if defined(AMREX_USE_CUDA)
+        cufftHandle plan2;
+        if (ndim == 1) {
+            cufftPlan1d(&plan, rbox.length(0), CUFFT_Z2D, 1);
+        } else if (ndim == 2) {
+            cufftPlan2d(&plan, rbox.length(1), rbox.length(0), CUFFT_Z2D);
+        } else {
+            cufftPlan3d(&plan, rbox.length(2), rbox.length(1), rbox.length(0), CUFFT_Z2D);
+        }
+        cufftSetStream(plan, amrex::Gpu::gpuStream());
+        cufftExecZ2D(plan, reinterpret_cast<cufftDoubleComplex*>(cfab.dataPtr()),
+                     rfab2.dataPtr());
+        Gpu::streamSynchronize();
+        cufftDestroy(plan);
+#endif
+
+        rfab2.template mult<RunOn::Device>(Real(1.0)/rbox.d_numPts());
+        rfab2.template minus<RunOn::Device>(rfab);
+        auto rr = rfab2.template minmax<RunOn::Device>();
+        amrex::Print() << "  After bwd fft, min & max: " << rr.first
+                       << " " << rr.second << std::endl;
+        {
+            std::ofstream ofs("after-rfab"+std::to_string(ndim));
+            rfab2.writeOn(ofs);
+        }
+
 #endif
     }
     amrex::Finalize();
