@@ -73,14 +73,21 @@ int main (int argc, char* argv[])
         using VedorFFTPlan = oneapi::mkl::dft::descriptor
             <oneapi::mkl::dft::precision::DOUBLE,oneapi::mkl::dft::domain::REAL> *;
         VedorFFTPlan plan;
+        std::vector<std::int64_t> strides(ndim+1,0);
         if (ndim == 1) {
+            strides[1] = 1;
             plan = new std::remove_pointer_t<VedorFFTPlan>(
                 std::int64_t(rbox.length(0)));
         } else if (ndim == 2) {
+            strides[2] = 1;
+            strides[1] = rbox.length(0);
             plan = new std::remove_pointer_t<VedorFFTPlan>(
                 {std::int64_t(rbox.length(1)),
                  std::int64_t(rbox.length(0))});
         } else {
+            strides[3] = 1;
+            strides[2] = rbox.length(0);
+            strides[1] = rbox.length(0) * rbox.length(1);
             plan = new std::remove_pointer_t<VedorFFTPlan>(
                 {std::int64_t(rbox.length(2)),
                  std::int64_t(rbox.length(1)),
@@ -89,6 +96,7 @@ int main (int argc, char* argv[])
 
         plan->set_value(oneapi::mkl::dft::config_param::PLACEMENT,
                         DFTI_NOT_INPLACE);
+        plan->set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,strides.data());
 //        plan->set_value(oneapi::mkl::dft::config_param::PACKED_FORMAT,
 //                        DFTI_CCE_FORMAT);
 //        plan->set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
