@@ -167,6 +167,42 @@ int main (int argc, char* argv[])
                      rfab2.dataPtr());
         Gpu::streamSynchronize();
         cufftDestroy(plan);
+#elif defined(AMREX_USE_SYCL)
+        VedorFFTPlan plan2;
+        std::vector<std::int64_t> strides2(ndim+1,0);
+        if (ndim == 1) {
+            strides2[1] = 1;
+            plan2 = new std::remove_pointer_t<VedorFFTPlan>(
+                std::int64_t(rbox.length(0)));
+        } else if (ndim == 2) {
+            strides2[2] = 1;
+            strides2[1] = rbox.length(0);
+            plan2 = new std::remove_pointer_t<VedorFFTPlan>(
+                {std::int64_t(rbox.length(1)),
+                 std::int64_t(rbox.length(0))});
+        } else {
+            strides2[3] = 1;
+            strides2[2] = rbox.length(0);
+            strides2[1] = rbox.length(0) * rbox.length(1);
+            plan2 = new std::remove_pointer_t<VedorFFTPlan>(
+                {std::int64_t(rbox.length(2)),
+                 std::int64_t(rbox.length(1)),
+                 std::int64_t(rbox.length(0))});
+        }
+
+        plan2->set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+                        DFTI_NOT_INPLACE);
+        plan2->set_value(oneapi::mkl::dft::config_param::FWD_STRIDES,strides2.data());
+        plan2->commit(amrex::Gpu::Device::streamQueue());
+
+        sycl::event r2 = oneapi::mkl::dft::compute_backward
+            (*plan2, 
+             reinterpret_cast<std::complex<amrex::Real>*>(cfab.dataPtr()),
+             rfab2.dataPtr());
+        r2.wait();
+
+        Gpu::streamSynchronize();
+        delete plan2;
 #endif
 
         rfab2.template mult<RunOn::Device>(Real(1.0)/rbox.d_numPts());
