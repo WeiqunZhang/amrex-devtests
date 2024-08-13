@@ -1,6 +1,7 @@
 #include <AMReX.H>
 #include <AMReX_FArrayBox.H>
 #include <AMReX_GpuComplex.H>
+#include <AMReX_ParmParse.H>
 
 #if defined(AMREX_USE_CUDA)
 #    include <cufft.h>
@@ -20,6 +21,11 @@ using namespace amrex;
 
 int main (int argc, char* argv[])
 {
+    {
+        ParmParse pp("amrex");
+        pp.add("the_arena_is_managed", std::string("true"));
+        pp.add("verbose", 0);
+    }
     amrex::Initialize(argc,argv);
 
     static_assert(std::is_same_v<Real,double>);
@@ -45,6 +51,10 @@ int main (int argc, char* argv[])
         });
         Gpu::streamSynchronize();
 
+        // rfab is a column major array with a size of 80 in each direction.
+        // cfab is a column major array with a size of 80 except that the
+        // size in the first direction is 40.
+
 #if defined(AMREX_USE_CUDA)
         cufftHandle plan;
         if (ndim == 1) {
@@ -59,18 +69,46 @@ int main (int argc, char* argv[])
                      reinterpret_cast<cufftDoubleComplex*>(cfab.dataPtr()));
         Gpu::streamSynchronize();
         cufftDestroy(plan);
+#elif defined(AMREX_USE_SYCL)
+        using VedorFFTPlan = oneapi::mkl::dft::descriptor
+            <oneapi::mkl::dft::precision::DOUBLE,oneapi::mkl::dft::domain::REAL> *;
+        VedorFFTPlan plan;
+        if (ndim == 1) {
+            plan = new std::remove_pointer_t<VedorFFTPlan>(
+                std::int64_t(rbox.length(0)));
+        } else if (ndim == 2) {
+            plan = new std::remove_pointer_t<VedorFFTPlan>(
+                {std::int64_t(rbox.length(1)),
+                 std::int64_t(rbox.length(0))});
+        } else {
+            plan = new std::remove_pointer_t<VedorFFTPlan>(
+                {std::int64_t(rbox.length(2)),
+                 std::int64_t(rbox.length(1)),
+                 std::int64_t(rbox.length(0))});
+        }
+
+        plan->set_value(oneapi::mkl::dft::config_param::PLACEMENT,
+                        DFTI_NOT_INPLACE);
+//        plan->set_value(oneapi::mkl::dft::config_param::PACKED_FORMAT,
+//                        DFTI_CCE_FORMAT);
+//        plan->set_value(oneapi::mkl::dft::config_param::CONJUGATE_EVEN_STORAGE,
+//                        DFTI_COMPLEX_COMPLEX);
+        plan->commit(amrex::Gpu::Device::streamQueue());
+
+        sycl::event r = oneapi::mkl::dft::compute_forward
+            (*plan, rfab.dataPtr(),
+             reinterpret_cast<std::complex<amrex::Real>*>(cfab.dataPtr()));
+        r.wait();
+
+        Gpu::streamSynchronize();
+        delete plan;
 #else
         static_assert(false, "todo");
 #endif
 
+        FArrayBox resultfab(cbox,2);
         {
-            std::ofstream ofs("rfab"+std::to_string(ndim));
-            rfab.writeOn(ofs);
-        }
-        {
-            std::ofstream ofs("cfab"+std::to_string(ndim));
-            FArrayBox tmpfab(cbox,2);
-            auto const& dst = tmpfab.array();
+            auto const& dst = resultfab.array();
             auto const& src = cfab.const_array();
             ParallelFor(cbox, [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
@@ -78,8 +116,32 @@ int main (int argc, char* argv[])
                 dst(i,j,k,1) = src(i,j,k).imag();
             });
             Gpu::streamSynchronize();
-            tmpfab.writeOn(ofs);
         }
+
+#if 1
+        amrex::Print() << "dim = " << ndim << "\n"
+                       << "  real min & max "
+                       << resultfab.template min<RunOn::Device>(0)
+                       << " " << resultfab.template max<RunOn::Device>(0) << "\n"
+                       << "  imag min & max "
+                       << resultfab.template min<RunOn::Device>(1)
+                       << " " << resultfab.template max<RunOn::Device>(1) << "\n";
+
+        resultfab(IntVect(2,0,0),1) = 0.0;
+
+        amrex::Print() << "  After resetting imag at (2,0,0) to zero, imag & max "
+                       << resultfab.template min<RunOn::Device>(1)
+                       << " " << resultfab.template max<RunOn::Device>(1) << "\n";
+
+        {
+            std::ofstream ofs("rfab"+std::to_string(ndim));
+            rfab.writeOn(ofs);
+        }
+        {
+            std::ofstream ofs("cfab"+std::to_string(ndim));
+            resultfab.writeOn(ofs);
+        }
+#endif
     }
     amrex::Finalize();
 }
