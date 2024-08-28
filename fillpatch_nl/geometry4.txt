@@ -1,0 +1,5 @@
+Domain Box: ((0,0,0) (8191,6143,127) (0,0,0))
+Real Box: (RealBox -10 22 -12 12 -0 0.5 )
+Is periodic in direction 0: 0
+Is periodic in direction 1: 0
+Is periodic in direction 2: 1
