@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
             ParallelFor(leveldata[ilev],
                         [=] AMREX_GPU_DEVICE (int b, int i, int j, int k)
                         {
-                            ma[b](i,j,k) = problo[0] + (i+0.5)*dx[0];
+                            ma[b](i,j,k) = problo[0] + (i+0.5)*dx[0] + 100.;
                         });
         }
 

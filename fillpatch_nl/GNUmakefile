@@ -1,6 +1,7 @@
 AMREX_HOME ?= ../../amrex
 
-DEBUG	= TRUE
+TEST = TRUE
+USE_ASSERTION = TRUE
 
 DIM	= 3
 
