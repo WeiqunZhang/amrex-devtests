@@ -80,8 +80,7 @@ int main(int argc, char* argv[])
         MultiFab mf(bamf, DistributionMapping(bamf), 1, 0);
 
         Vector<Vector<MultiFab*>> smf(nlevels);
-        Vector<Vector<Real>> st(nlevels);
-        
+        Vector<Vector<Real>> st(nlevels);        
         Vector<PhysBCFunct<GpuBndryFuncFab<FabFillNoOp>>> bc;
         Vector<IntVect> ratio(nlevels-1, IntVect(2));
         Vector<BCRec> bcr(nlevels);
