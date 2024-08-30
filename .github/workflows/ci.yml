@@ -36,7 +36,7 @@ jobs:
         ccache -z
 
         cd amrex-devtests/hello_world
-        make -j 4
+        make -j 4 CCACHE=ccache
 
         ccache -s
         du -hs ~/.cache/ccache
