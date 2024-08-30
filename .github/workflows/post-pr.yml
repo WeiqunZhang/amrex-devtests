@@ -4,6 +4,8 @@ on:
     types:
       - closed
 
+# Don't have permission to clean up cache for PR from a fork.
+
 jobs:
   cleanup_cache:
     name: Clean Up Ccache Cache Post PR
