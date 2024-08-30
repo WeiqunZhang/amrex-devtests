@@ -32,6 +32,7 @@ jobs:
           if [[ $EVENT == "pull_request" ]]; then
             # for debugging: cat ${GITHUB_EVENT_PATH}
             pr_number=$(gh pr list --head "${{ github.event.workflow_run.head_branch }}" --author "${{ github.event.sender.login }}" --json number --jq '.[0].number')
+            echo "Clean up cache for PR ${pr_number}"
             BRANCH=refs/pull/${pr_number}/merge
           else
             BRANCH=refs/heads/${{ github.event.workflow_run.head_branch }}
