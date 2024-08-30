@@ -33,15 +33,7 @@ jobs:
 
             cat ${GITHUB_EVENT_PATH}
 
-            pr_author=$(jq --raw-output .sender.login < ${GITHUB_EVENT_PATH})
-            pr_head=$(jq --raw-output .workflow_run.head_branch < ${GITHUB_EVENT_PATH})
-            echo "pr_author = ${pr_author}"
-            echo "pr_head = ${pr_head}"
-            echo "github.event.sender.login = ${{ github.event.sender.login }}"
-            echo "github.event.workflow_run.head_branch = ${{ github.event.workflow_run.head_branch }}"
-            pr_number=$(gh pr --head $pr_head --author $pr_author --json number --jq '.[0].number')
-            echo "Clean up cache for PR ${pr_number}."
-            pr_number=$(gh pr --head "${{ github.event.workflow_run.head_branch }}" --author "${{ github.event.sender.login }}" --json number --jq '.[0].number')
+            pr_number=$(gh pr list --head "${{ github.event.workflow_run.head_branch }}" --author "${{ github.event.sender.login }}" --json number --jq '.[0].number')
             BRANCH=refs/pull/${pr_number}/merge
           else
             BRANCH=refs/heads/${{ github.event.workflow_run.head_branch }}
