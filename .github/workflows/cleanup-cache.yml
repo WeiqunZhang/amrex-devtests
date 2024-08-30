@@ -29,6 +29,8 @@ jobs:
           # Triggering workflow run name (e.g., LinuxClang)
           WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
 
+          # For debugging, cat ${GITHUB_EVENT_PATH} to see the payload.
+
           if [[ $EVENT == "pull_request" ]]; then
             pr_head_sha=${{ github.event.workflow_run.head_sha }}
             pr_number=$(gh pr list --search $pr_head_sha --json number --jq '.[0].number')
