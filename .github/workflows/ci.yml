@@ -1,0 +1,42 @@
+name: ci
+
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.head_ref }}-ci
+  cancel-in-progress: true
+
+jobs:
+  hello_world:
+    name: Hello World
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout amrex-devtests
+      uses: actions/checkout@v4
+      with:
+        path: amrex-devtests
+    - name: Checkout AMReX
+      uses: actions/checkout@v4
+      with:
+        repository: AMReX-Codes/amrex
+        path: amrex
+    - name: Set Up Cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ccache
+        key: ccache-${{ github.workflow }}-${{ github.job }}-git-${{ github.sha }}
+        restore-keys: |
+             ccache-${{ github.workflow }}-${{ github.job }}-git-
+    - name: Load Dependencies
+      run: |
+        amrex/.github/workflows/dependencies/dependencies.sh
+        amrex/.github/workflows/dependencies/dependencies_ccache.sh
+    - name: Build
+      run: |
+        ccache -z
+
+        cd amrex-devtests/hello_world
+        make -j 4
+
+        ccache -s
+        du -hs ~/.cache/ccache

@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
     {
         Box dom0(IntVect(0), IntVect(511,383,7));
         RealBox rb({-10.0, -12.0, -0.0}, {22.0, 12.0, 0.5});
-        Array<int,3> is_periodic{0,0,1};
+        Array<int,3> is_periodic{0,0,0};
 
         int const nlevels = 5;
 
@@ -87,8 +87,8 @@ int main(int argc, char* argv[])
         for (int ilev = 0; ilev < nlevels; ++ilev) {
             smf[ilev].push_back(&leveldata[ilev]);
             st[ilev].push_back(0.0);
-            bcr[ilev] = BCRec(BCType::foextrap, BCType::foextrap, BCType::int_dir,
-                              BCType::foextrap, BCType::foextrap, BCType::int_dir);
+            bcr[ilev] = BCRec(BCType::foextrap, BCType::foextrap, BCType::foextrap,
+                              BCType::foextrap, BCType::foextrap, BCType::foextrap);
             bc.emplace_back(geom[ilev], Vector<BCRec>{bcr[ilev]}, FabFillNoOp{});
         }
 
