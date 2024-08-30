@@ -23,7 +23,7 @@ jobs:
 
           REPO=${{ github.repository }}
 
-          cat ${GITHUB_EVENT_PATH}
+          # For debugging cat ${GITHUB_EVENT_PATH} to see the payload.
 
           pr_head_sha=${{ github.event.workflow_run.head_sha }}
           pr_number=$(gh pr list --state all --search $pr_head_sha --json number --jq '.[0].number')
