@@ -30,6 +30,9 @@ jobs:
           WORKFLOW_NAME="${{ github.event.workflow_run.name }}"
 
           if [[ $EVENT == "pull_request" ]]; then
+
+            cat ${GITHUB_EVENT_PATH}
+
             pr_number=$(jq --raw-output .workflow_run.pull_requests[0].number < ${GITHUB_EVENT_PATH})
             echo "Clean up cache for PR ${pr_number}."
             BRANCH=refs/pull/${pr_number}/merge
@@ -62,3 +65,13 @@ jobs:
             done
           done
           unset IFS
+
+  save_pr_number:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr_number
+          path: ${GITHUB_EVENT_PATH}
+          retention-days: 1
