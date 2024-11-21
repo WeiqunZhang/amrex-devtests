@@ -139,7 +139,10 @@ int main (int argc, char* argv[])
         using heffte_complex = typename heffte::fft_output<Real>::type;
         heffte_complex* spectral_data = (heffte_complex*) spectral_field.dataPtr();
 
+        double theffte = 1.e50;
+        for (int itry = 0; itry < 4; ++itry)
         {
+            auto ta = amrex::second();
             fft.forward(rhs[local_boxid].dataPtr(), spectral_data);
             Array4< GpuComplex<Real> > spectral = spectral_field.array();
             ParallelFor(c_local_box, [=] AMREX_GPU_DEVICE(int i, int j, int k)
@@ -148,17 +151,25 @@ int main (int argc, char* argv[])
             });
             Gpu::streamSynchronize();
             fft.backward(spectral_data, soln[local_boxid].dataPtr());
+            auto tb = amrex::second();
+            theffte = amrex::min(theffte, tb-ta);
         }
 
         auto t1 = amrex::second();
-        amrex::Print() << "HEFFTE time: " << t1-t0 << "\n";
+        amrex::Print() << "HEFFTE time: " << t1-t0 << " " << theffte << "\n";
 
 #else
         auto t0 = amrex::second();
         FFT::R2C fft(geom.Domain());
-        fft.forwardThenBackward(rhs, soln, post_forward);
+        double tamrex = 1.e50;
+        for (int itry = 0; itry < 4; ++itry) {
+            auto ta = amrex::second();
+            fft.forwardThenBackward(rhs, soln, post_forward);
+            auto tb = amrex::second();
+            tamrex = amrex::min(tamrex, tb-ta);
+        }
         auto t1 = amrex::second();
-        amrex::Print() << "AMReX time: " << t1-t0 << "\n";
+        amrex::Print() << "AMReX time: " << t1-t0 << " " << tamrex << "\n";
 #endif
 
         {
