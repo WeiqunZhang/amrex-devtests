@@ -31,15 +31,6 @@ static void test_kokkos (MultiFab& mfa, MultiFab const& mfb)
         Kokkos::parallel_for(Kokkos::MDRangePolicy({0,0,0},{N0,N1,N2}),
                              KOKKOS_LAMBDA (int i, int j, int k)
         {
-            if ((i == 0 && j == 0 && k == 0) ||
-                (i == 1 && j == 0 && k == 0) ||
-                (i == 0 && j == 0 && k == 1))
-            {
-                AMREX_IF_ON_DEVICE((
-                printf("xxxxx i = %d, j = %d, k = %d, blockIdx = %u, %u, %u, threadIdx = %u, %u, %u, blockDim = %u, %u, %u\n",
-                       i,j,k,blockIdx.x,blockIdx.y,blockIdx.z,threadIdx.x,threadIdx.y,threadIdx.z,blockDim.x,blockDim.y,blockDim.z);));
-            }
-
             a(i,j,k) += 0.5*b(i,j,k);
         });
     }
