@@ -44,6 +44,10 @@ int main(int argc, char* argv[])
             good_nodes.insert(good_nodes.end(), nodes.begin(), nodes.end());
         }
         std::sort(good_nodes.begin(), good_nodes.end());
+        auto git = std::unique(good_nodes.begin(), good_nodes.end());
+        good_nodes.erase(git, good_nodes.end());
+
+        std::cout << "Number of Good Nodes: " << good_nodes.size() << "\n\n";
 
         std::vector<std::string> bad_nodes;
         std::map<std::string,int> maybe_bad_nodes;
