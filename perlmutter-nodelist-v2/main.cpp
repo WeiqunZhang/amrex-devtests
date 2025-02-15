@@ -81,6 +81,7 @@ int main(int argc, char* argv[])
 
         std::set<std::string> bad_nodes;
         std::map<std::string,int> maybe_bad_nodes;
+        std::cout << "Number of bad jobs: " << bad_jobs.size() << "\n";
         for (auto const& job_id: bad_jobs) {
             std::cout << "Processing bad job: " << job_id << ", ";
             auto nodes = get_node_list(job_id);
