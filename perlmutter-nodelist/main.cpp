@@ -4,17 +4,20 @@
 
 #include <fstream>
 #include <map>
+#include <set>
 
 using namespace amrex;
 
 namespace {
-    std::vector<std::string> get_node_list (std::string node_list_file)
+    std::pair<std::string,std::vector<std::string>>
+    get_node_list (std::string node_list_file)
     {
         std::ifstream ifs(node_list_file);
         if (! ifs.is_open()) { return {}; }
 
         std::string line;
         std::getline(ifs, line);
+        auto words = amrex::split(line, "=");
 
         int nnodes;
         ifs >> nnodes;
@@ -24,7 +27,7 @@ namespace {
         auto nodes = amrex::split(line, ",-");
         AMREX_ALWAYS_ASSERT(nnodes == nodes.size());
 
-        return nodes;
+        return std::make_pair(amrex::trim(words[1]),nodes);
     }
 }
 
@@ -36,7 +39,7 @@ int main(int argc, char* argv[])
 
         std::vector<std::string> good_nodes;
         for (int i = 0; i < 100; ++i) {
-            auto nodes = get_node_list("good-nodelist-"+std::to_string(i));
+            auto [jobid, nodes] = get_node_list("good-nodelist-"+std::to_string(i));
             if (nodes.empty()) { break; }
             good_nodes.insert(good_nodes.end(), nodes.begin(), nodes.end());
         }
@@ -44,9 +47,17 @@ int main(int argc, char* argv[])
 
         std::vector<std::string> bad_nodes;
         std::map<std::string,int> maybe_bad_nodes;
+        std::set<std::string> jobids;
         for (int i = 0; i < 100; ++i) {
-            auto nodes = get_node_list("bad-nodelist-"+std::to_string(i));
+            std::string fname("bad-nodelist-"+std::to_string(i));
+            auto [jobid, nodes] = get_node_list(fname);
             if (nodes.empty()) { break; }
+            if (jobids.count(jobid) == 1) {
+                std::cout << fname << " for job " << jobid << " is redundant.\n";
+            } else {
+                jobids.insert(jobid);
+                std::cout << "Processing " << fname << " for job " << jobid << "\n";
+            }
             std::vector<std::string> maybe;
             for (auto const& node : nodes) {
                 auto found = std::find(good_nodes.cbegin(), good_nodes.cend(), node);
@@ -67,13 +78,12 @@ int main(int argc, char* argv[])
         }
         std::sort(bad_nodes.begin(), bad_nodes.end());
 
-        std::cout << "Bad Nodes: " << bad_nodes.size() << "\n";
+        std::cout << "\nNumber of Bad Nodes: " << bad_nodes.size() << "\n";
         for (auto const& node : bad_nodes) {
             std::cout << "    " << node << "\n";
         }
-        std::cout << "\n";
 
-        std::cout << "Number of Maybe Bad Nodes: " << maybe_bad_nodes.size() << "\n";
+        std::cout << "\nNumber of Maybe Bad Nodes: " << maybe_bad_nodes.size() << "\n";
         {
             std::map<int,std::vector<std::string>> maybe_bad_nodes_2;
             for (auto const& [node,count] : maybe_bad_nodes) {
