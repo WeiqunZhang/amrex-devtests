@@ -1,0 +1,1 @@
+sacct --parsable2 --format=JobID,JobName,NNodes,State,ExitCode,NodeList -X -j 35583077
