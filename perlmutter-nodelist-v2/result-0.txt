@@ -1,0 +1,21 @@
+
+Processing good job: 35871151, Number of nodes: 1024
+
+Number of Good Nodes: 1024
+
+Processing bad job: 31925157, Number of nodes: 1024
+Processing bad job: 34629701, Number of nodes: 1024
+Processing bad job: 34741604, Number of nodes: 1024
+Processing bad job: 35164723, Number of nodes: 1024
+Processing bad job: 35421338, Number of nodes: 1024
+Processing bad job: 35583077, Number of nodes: 1024
+Processing bad job: 35865688, Number of nodes: 16
+Processing bad job: 35877378, Number of nodes: 8
+
+1 Bad Node: 008393
+
+Number of Maybe Bad Nodes: 753
+    1 nodes appeared to be bad 7 times: 001665
+
+    55 nodes appeared to be bad 6 times: 001268,001305,001404,001405,001533,001556,001596,001597,001612,001669,001672,001677,001713,001813,001873,001876,001884,001936,001940,001944,001972,002005,002012,002040,002052,002060,002104,002108,002192,002196,002200,002225,002228,002236,002265,002268,002276,002277,002280,002281,002284,002377,002384,002416,002432,002437,002716,002724,003500,003509,003524,003564,003824,003880,003881
+
