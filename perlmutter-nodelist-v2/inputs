@@ -1,10 +1,16 @@
+# sacct --format=JobID,JobName,Partition,Account,User,NNodes,State,ExitCode,Elapsed,TimeLimit,Start,NodeList -j
+
+# Ask Marco about 35534275. I think it's a bad one.
+
 good_jobs = 35871151
 
-bad_jobs = 31925157  \
+bad_jobs = 30999798  \
+           31925157  \
            34629701  \
            34741604  \
            35164723  \
            35421338  \
+           35534275  \
            35583077  \
            35865688  \
            35877378  \
