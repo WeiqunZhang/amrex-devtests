@@ -140,7 +140,8 @@ void main_main ()
 
     auto const& factory = makeEBFabFactory(geom, ba, dm, {1,1,1}, EBSupport::full);
     MultiFab const& vfrc = factory->getVolFrac();
-    amrex::WriteMLMF(plot_file, {&vfrc}, {geom});
+    amrex::VisMF::Write(vfrc, "vfrc");
+//    amrex::WriteMLMF(plot_file, {&vfrc}, {geom});
 }
 
 int main (int argc, char* argv[])
