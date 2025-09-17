@@ -69,12 +69,11 @@ int main(int argc, char* argv[])
                             {0,     bx.smallEnd(0), bx.smallEnd(1), bx.smallEnd(2)},
                             {ncomp, bx.bigEnd(0)+1, bx.bigEnd(1)+1, bx.bigEnd(2)+1});
 
-            // We can access FabArray<BaseFab<GpuArray<>>> in two ways
+            // We can access FabArray<BaseFab<GpuArray<>>> in three ways
             Array4<GpuArray<Real,ncomp>> const& a1 = fa[mfi].array();
             Table4D<Real> a2(reinterpret_cast<Real*>(fa[mfi].dataPtr()),
                              {0,     bx.smallEnd(0), bx.smallEnd(1), bx.smallEnd(2)},
                              {ncomp, bx.bigEnd(0)+1, bx.bigEnd(1)+1, bx.bigEnd(2)+1});
-
             auto pa = makePolymorphic(a1);
 
             amrex::ParallelFor(bx,
