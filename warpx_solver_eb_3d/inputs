@@ -1,0 +1,11 @@
+
+n_cell = 256 256 256
+#n_cell = 256 256 640
+
+prob_lo = -8e-3/2 -8e-3/2 0.0
+prob_hi =  8e-3/2  8e-3/2 40.e-3
+
+eb2.geom_type = parser
+eb2.parser_function = "r = sqrt(x*x + y*y);
+if( ((z>17e-3) and (z<20e-3) and (r>2.5e-3)) or ((z<2e-3) and (r>3e-3)) or ((z>9.5e-3) and (z<15.5e-3) and (r>2e-3) and (r>2e-3+0.125*(z-11.5e-3))), 1, -1 )"
+

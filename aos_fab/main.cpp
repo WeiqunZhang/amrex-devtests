@@ -52,8 +52,8 @@ int main(int argc, char* argv[])
         fa.FillBoundary(Periodicity(IntVect(ncells)));
 
         // We could use MultiFab/FArrayBox/BaseFab to store AoS data. But
-        // almost all of their member functions will not work.  We can still
-        // access them with the help of Table4D
+        // almost all of their member functions will not work. We can still
+        // access them with the help of Table4D or PolymorphicArray4.
         int ncomp_runtime = ncomp;
         MultiFab mf(ba,dm,ncomp_runtime,nghost);
         for (MFIter mfi(mf); mfi.isValid(); ++mfi) {
@@ -75,6 +75,8 @@ int main(int argc, char* argv[])
                              {0,     bx.smallEnd(0), bx.smallEnd(1), bx.smallEnd(2)},
                              {ncomp, bx.bigEnd(0)+1, bx.bigEnd(1)+1, bx.bigEnd(2)+1});
 
+            auto pa = makePolymorphic(a1);
+
             amrex::ParallelFor(bx,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
@@ -82,6 +84,7 @@ int main(int argc, char* argv[])
                     AMREX_ALWAYS_ASSERT(t(n,i,j,k) == value(i,j,k,n));
                     AMREX_ALWAYS_ASSERT(t(n,i,j,k) == a1(i,j,k)[n]);
                     AMREX_ALWAYS_ASSERT(t(n,i,j,k) == a2(n,i,j,k));
+                    AMREX_ALWAYS_ASSERT(t(n,i,j,k) == pa(i,j,k,n));
                 }
             });
         }
