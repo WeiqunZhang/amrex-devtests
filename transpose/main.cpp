@@ -36,6 +36,11 @@ int main(int argc, char* argv[])
 #endif
         });
 
+        amrex::transposeCtoF(fab1.dataPtr(), fab2.dataPtr(),
+                             AMREX_D_DECL(box.length(0),
+                                          box.length(1),
+                                          box.length(2)));
+
         Gpu::streamSynchronize();
         auto t0 = amrex::second();
         for (int i = 0; i < 10; ++i) {
