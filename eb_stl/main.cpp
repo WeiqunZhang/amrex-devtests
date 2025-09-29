@@ -8,13 +8,23 @@ using namespace amrex;
 
 void main_main ()
 {
-    int n_cell = 128;
+    int nx = 128;
+    int ny = 128;
+    int nz = 128;
     int max_grid_size = 64;
     std::string plot_file{"plt"};
     int which_stl = 1;
+    Real xmin = -1.2;
+    Real xmax =  1.2;
+    Real ymin = -1.2;
+    Real ymax =  1.2;
+    Real zmin = -1.2;
+    Real zmax =  1.2;
     {
         ParmParse pp;
-        pp.query("n_cell", n_cell);
+        pp.query("nx", nx);
+        pp.query("ny", ny);
+        pp.query("nz", nz);
         pp.query("max_grid_size", max_grid_size);
         pp.query("plot_file", plot_file);
         pp.query("which_stl", which_stl);
@@ -117,6 +127,23 @@ void main_main ()
             stl_file = "stls/stl-annulus/CA_ALL.stl";
             stl_scale = 0.002;
             stl_center = std::vector<Real>{0., 0., -1.};
+        } else if (which_stl == 24) {
+            stl_file = "stls/AileM6_with_sharp_TE.stl";
+            stl_scale = 0.0008;
+            stl_center = std::vector<Real>{-0.5, -0.5, 0.};
+            xmin = -0.6;
+            xmax =  0.5;
+            ymin = -0.6;
+            ymax =  0.5;
+            zmin = -0.15;
+            zmax =  0.125;
+            nx = 512;
+            ny = 512;
+            nz = 128;
+        } else if (which_stl == 25) {
+            stl_file = "stls/HLPW-4_CRM-HL_40-37_Nominal_v2.stl";
+            stl_scale = 1.5e-5;
+            stl_center = std::vector<Real>{-0.5, 0., 0.};
         }
 
         ParmParse pp("eb2");
@@ -125,9 +152,9 @@ void main_main ()
         pp.addarr("stl_center", stl_center);
     }
 
-    Geometry geom(Box(IntVect(0),IntVect(n_cell-1)),
-                  RealBox({AMREX_D_DECL(-1.2_rt,-1.2_rt,-1.2_rt)},
-                          {AMREX_D_DECL( 1.2_rt, 1.2_rt, 1.2_rt)}),
+    Geometry geom(Box(IntVect(0),IntVect(AMREX_D_DECL(nx,ny,nz))),
+                  RealBox({AMREX_D_DECL(xmin,ymin,zmin)},
+                          {AMREX_D_DECL(xmax,ymax,zmax)}),
                   0, {AMREX_D_DECL(0,0,0)});
     BoxArray ba(geom.Domain());
     ba.maxSize(max_grid_size);

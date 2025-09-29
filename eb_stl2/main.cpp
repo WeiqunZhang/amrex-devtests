@@ -24,7 +24,8 @@ void main_main ()
         ppeb2.add("geom_type", geom_type);
         ppeb2.add("cover_multiple_cuts", 1);
         // ppeb2.add("stl_file", std::string("armadillo.stl"));
-        ppeb2.add("stl_file", std::string("adirondack.stl"));
+        // ppeb2.add("stl_file", std::string("adirondack.stl"));
+        ppeb2.add("stl_file", AileM6_with_sharp_TE.stl);
     }
 
     Geometry geom(Box(IntVect(0),IntVect(n_cell-1, n_cell-1, n_cell-1)),
