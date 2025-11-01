@@ -13,7 +13,7 @@ void main_main ()
     int nz = 128;
     int max_grid_size = 64;
     std::string plot_file{"plt"};
-    int which_stl = 1;
+    int which_stl = 0;
     Real xmin = -1.2;
     Real xmax =  1.2;
     Real ymin = -1.2;
@@ -39,7 +39,12 @@ void main_main ()
         Real stl_scale = 1.0;
         std::vector<Real> stl_center{0.0, 0.0, 0.0};
 
-        if (which_stl == 1) {
+        if (which_stl == 0) {
+            stl_file = "AileM6_with_sharp_TE.stl";
+            nx = ny = nz = 256;
+            stl_scale = 0.001;
+            stl_center = std::vector<Real>{-0.8, -0.8, 0.};
+        } else if (which_stl == 1) {
             stl_file = "sphere.stl";
         } else if (which_stl == 2) {
             stl_file = "cube.stl";
@@ -161,14 +166,21 @@ void main_main ()
     DistributionMapping dm(ba);
 
     double t0 = amrex::second();
-    EB2::Build(geom, 0, 10);
+    EB2::BuildMultiValuedMultiCut(geom,0,0);
     double t1 = amrex::second();
     amrex::Print() << "Build time: " << t1-t0 << "\n";
 
     auto const& factory = makeEBFabFactory(geom, ba, dm, {1,1,1}, EBSupport::full);
     MultiFab const& vfrc = factory->getVolFrac();
     amrex::VisMF::Write(vfrc, "vfrc");
-//    amrex::WriteMLMF(plot_file, {&vfrc}, {geom});
+//#if 0
+    amrex::WriteMLMF(plot_file, {&vfrc}, {geom});
+    MultiFab foo(vfrc.boxArray(), vfrc.DistributionMap(), 2, vfrc.nGrowVect());
+    foo.setVal(1.0);
+    MultiFab::Copy(foo, vfrc, 0, 0, 1, vfrc.nGrowVect());
+    MultiFab::Subtract(foo, vfrc, 0, 1, 1, vfrc.nGrowVect());
+    amrex::WriteMLMF("plt2", {&foo}, {geom});
+//#endif
 }
 
 int main (int argc, char* argv[])

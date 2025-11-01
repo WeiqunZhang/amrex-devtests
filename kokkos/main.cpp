@@ -39,7 +39,7 @@ static void test_kokkos (MultiFab& mfa, MultiFab const& mfb)
 int main (int argc, char* argv[])
 {
     amrex::Initialize(argc, argv);
-    Kokkos::initialize(argc, argv);
+    Kokkos::initialize(Kokkos::InitializationSettings().set_device_id(amrex::Gpu::Device::deviceId()));
     {
         BoxArray ba(Box(IntVect(0),IntVect(257)));
         DistributionMapping dm(ba);
