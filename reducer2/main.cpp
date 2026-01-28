@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
 #endif
             for (MFIter mfi(mf,TilingIfNotGPU()); mfi.isValid(); ++mfi) {
                 Box const& box = mfi.tilebox();
-                auto const& a = mf.array(mfi);
+                auto const& a = mf.const_array(mfi);
                 reducer.eval(box, [=] AMREX_GPU_DEVICE (int, int i, int j, int k)
                 {
                     return a(i,j,k);
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
 #endif
             for (MFIter mfi(mf,TilingIfNotGPU()); mfi.isValid(); ++mfi) {
                 Box const& box = mfi.tilebox();
-                auto const& a = mf.array(mfi);
+                auto const& a = mf.const_array(mfi);
                 reduce_op.eval(box, reduce_data,
                                [=] AMREX_GPU_DEVICE (int i, int j, int k) -> T
                 {
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
 #endif
             for (MFIter mfi(mf,TilingIfNotGPU()); mfi.isValid(); ++mfi) {
                 Box const& box = mfi.tilebox();
-                auto const& a = mf.array(mfi);
+                auto const& a = mf.const_array(mfi);
                 amrex::ParallelFor(Gpu::KernelInfo{}.setReduction(true), box,
                                    [=] AMREX_GPU_DEVICE (int i, int j, int k, Gpu::Handler const& gh)
                 {
@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
 #endif
                 for (MFIter mfi(mf,TilingIfNotGPU()); mfi.isValid(); ++mfi) {
                     Box const& box = mfi.tilebox();
-                    auto const& a = mf.array(mfi);
+                    auto const& a = mf.const_array(mfi);
                     reduce_op.eval(box, reduce_data,
                                    [=] AMREX_GPU_DEVICE (int i, int j, int k)
                                    -> GpuTuple<Real>
