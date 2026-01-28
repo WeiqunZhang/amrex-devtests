@@ -13,10 +13,13 @@ int main(int argc, char* argv[])
     // https://github.com/AMReX-Codes/amrex/issues/4746
 #if (AMREX_SPACEDIM == 3)
     {
-        Box domain(IntVect(0), IntVect(575,575,431));
-        BoxArray bs = amrex::decompose(domain, 864);
-        amrex::Print() << "xxxxx bs.size() = " << bs.size() << std::endl;
-
+        IntVect n_cell{576, 576, 432};
+        Box domain(IntVect(0), n_cell-1);
+        IntVect max_grid_size(48,48,72);
+        IntVect blocking_factor(8);
+        int nprocs = 864; // 256;
+        auto ba = v4::make_base_grids(domain,max_grid_size,blocking_factor,nprocs);
+        print_summary(ba);
     }
 #endif
 

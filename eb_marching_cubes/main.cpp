@@ -20,6 +20,7 @@ void main_main ()
     Real ymax =  1.2;
     Real zmin = -1.2;
     Real zmax =  1.2;
+    bool test_marching_cubes = true;
     {
         ParmParse pp;
         pp.query("nx", nx);
@@ -32,6 +33,7 @@ void main_main ()
         ParmParse ppeb2("eb2");
         std::string geom_type("stl");
         ppeb2.add("geom_type", geom_type);
+        ppeb2.queryAdd("test_marching_cubes", test_marching_cubes);
     }
 
     {
@@ -133,22 +135,40 @@ void main_main ()
             stl_scale = 0.002;
             stl_center = std::vector<Real>{0., 0., -1.};
         } else if (which_stl == 24) {
-            stl_file = "stls/AileM6_with_sharp_TE.stl";
-            stl_scale = 0.0008;
-            stl_center = std::vector<Real>{-0.5, -0.5, 0.};
-            xmin = -0.6;
-            xmax =  0.5;
-            ymin = -0.6;
-            ymax =  0.5;
-            zmin = -0.15;
-            zmax =  0.125;
-            nx = 512;
-            ny = 512;
-            nz = 128;
+            stl_file = "AileM6_with_sharp_TE.stl";
+            xmin =  -40.;
+            xmax = 1280.;
+            ymin =  -40.;
+            ymax = 1280.;
+            zmin = -40.;
+            zmax =  40.;
+            nx = 528;
+            ny = 528;
+            nz =  32;
         } else if (which_stl == 25) {
             stl_file = "stls/HLPW-4_CRM-HL_40-37_Nominal_v2.stl";
             stl_scale = 1.5e-5;
-            stl_center = std::vector<Real>{-0.5, 0., 0.};
+            stl_center = std::vector<Real>{-0.5, 0.01, 0.};
+            xmin = -0.5;
+            xmax =  0.5;
+            ymin =  0.0;
+            ymax =  0.5;
+            zmin =  0.0;
+            zmax =  0.25;
+            nx = 512;
+            ny = 256;
+            nz = 128;
+        } else if (which_stl == 26) {
+            stl_file = "armadillo.stl";
+            xmin = -64.;
+            xmax =  64.;
+            ymin = -64.;
+            ymax = 128.;
+            zmin = -64.;
+            zmax =  64;
+            nx = 128*2;
+            ny = 192*2;
+            nz = 128*2;
         }
 
         ParmParse pp("eb2");
@@ -165,22 +185,20 @@ void main_main ()
     ba.maxSize(max_grid_size);
     DistributionMapping dm(ba);
 
-    double t0 = amrex::second();
-    EB2::BuildMultiValuedMultiCut(geom,0,0);
-    double t1 = amrex::second();
-    amrex::Print() << "Build time: " << t1-t0 << "\n";
+    if (test_marching_cubes) {
+        double t0 = amrex::second();
+        EB2::BuildMultiValuedMultiCut(geom,0,0);
+        double t1 = amrex::second();
+        amrex::Print() << "Build time: " << t1-t0 << "\n";
+    } else {
+        EB2::Build(geom,0,0);
 
-    auto const& factory = makeEBFabFactory(geom, ba, dm, {1,1,1}, EBSupport::full);
-    MultiFab const& vfrc = factory->getVolFrac();
-    amrex::VisMF::Write(vfrc, "vfrc");
-//#if 0
-    amrex::WriteMLMF(plot_file, {&vfrc}, {geom});
-    MultiFab foo(vfrc.boxArray(), vfrc.DistributionMap(), 2, vfrc.nGrowVect());
-    foo.setVal(1.0);
-    MultiFab::Copy(foo, vfrc, 0, 0, 1, vfrc.nGrowVect());
-    MultiFab::Subtract(foo, vfrc, 0, 1, 1, vfrc.nGrowVect());
-    amrex::WriteMLMF("plt2", {&foo}, {geom});
-//#endif
+        auto const& factory = makeEBFabFactory(geom, ba, dm, {1,1,1}, EBSupport::volume);
+        MultiFab const& vfrc = factory->getVolFrac();
+        //    amrex::VisMF::Write(vfrc, "vfrc");
+
+        amrex::WriteMLMF(plot_file, {&vfrc}, {geom});
+    }
 }
 
 int main (int argc, char* argv[])
