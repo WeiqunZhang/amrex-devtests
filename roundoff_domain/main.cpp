@@ -10,6 +10,15 @@ using namespace amrex;
 int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
+    {
+        std::array<Real,AMREX_SPACEDIM> rblo{-400e-6, -400e-6, -50e-6};
+        std::array<Real,AMREX_SPACEDIM> rbhi{ 400e-6,  400e-6,  50e-6};
+        Box domain(IntVect(0), IntVect(1024, 1024, 1));
+         RealBox rb(rblo, rbhi);
+        Geometry geom(domain, rb, 0, {AMREX_D_DECL(0,0,0)});
+        amrex::Print().SetPrecision(17) << "geom: " << geom << std::endl;
+    }
+#if 0
     for (int icell = 0; icell < 10000; ++icell)
     {
         int ncells = amrex::Random_int(102400) + 4;
@@ -70,5 +79,6 @@ int main(int argc, char* argv[])
             }
         }
     }
+#endif
     amrex::Finalize();
 }

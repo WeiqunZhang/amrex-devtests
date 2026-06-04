@@ -1,0 +1,11 @@
+amrex.fpe_trap_invalid = 1
+
+method = 0
+
+reltol = 1.e-11
+
+n_cell = 128
+max_grid_size = 64
+
+prob.a = 0.12 # radius of cylinders
+prob.d = 0.45 # distance between two cylinders
