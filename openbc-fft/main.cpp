@@ -85,7 +85,7 @@ make_info (SolveConfig const& config)
     FFT::Info info;
     info.setOpenBCPadding(config.padding);
     if (config.padding) {
-        info.setOpenBCPaddingFactors(config.nfactors);
+        info.setOpenBCPaddingNumPrimeFactors(config.nfactors);
     }
     return info;
 }
