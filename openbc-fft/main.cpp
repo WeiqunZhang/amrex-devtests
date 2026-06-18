@@ -217,8 +217,10 @@ main (int argc, char* argv[])
                        << "  cells: " << cells << "\n"
                        << "  timed solves per configuration: " << nsolve << "\n";
 
-        std::array<SolveConfig,3> const configs{{
+        std::array<SolveConfig,5> const configs{{
             {"unpadded", false, 3},
+            {"nfactors=3", true, 3},
+            {"nfactors=4", true, 4},
             {"nfactors=5", true, 5},
             {"nfactors=6", true, 6}
         }};
