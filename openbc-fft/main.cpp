@@ -174,10 +174,6 @@ main (int argc, char* argv[])
         int n_cell_y = n_cell;
         int n_cell_z = n_cell;
 
-        int max_grid_size_x = 32;
-        int max_grid_size_y = 32;
-        int max_grid_size_z = 32;
-
         int nsolve = 10;
 
         ParmParse pp;
@@ -188,9 +184,6 @@ main (int argc, char* argv[])
         pp.query("n_cell_x", n_cell_x);
         pp.query("n_cell_y", n_cell_y);
         pp.query("n_cell_z", n_cell_z);
-        pp.query("max_grid_size_x", max_grid_size_x);
-        pp.query("max_grid_size_y", max_grid_size_y);
-        pp.query("max_grid_size_z", max_grid_size_z);
         pp.query("nsolve", nsolve);
 
         AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
@@ -199,8 +192,7 @@ main (int argc, char* argv[])
         AMREX_ALWAYS_ASSERT_WITH_MESSAGE(nsolve > 0, "nsolve must be positive");
 
         Box const domain(IntVect(0), IntVect(n_cell_x-1, n_cell_y-1, n_cell_z-1));
-        BoxArray ba(domain);
-        ba.maxSize(IntVect(max_grid_size_x, max_grid_size_y, max_grid_size_z));
+        BoxArray ba= amrex::decompose(domain, ParallelDescriptor::NProcs());
         DistributionMapping dm(ba);
 
         Geometry geom(domain,
